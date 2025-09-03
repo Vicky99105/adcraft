@@ -34,8 +34,8 @@ export default function HomePage() {
   const [templatePrompts, setTemplatePrompts] = useState<TemplateWithPrompt[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [resp, setResp] = useState<TriggerResponse | null>(null)
-  // Hardcoded webhook URL - update this to your n8n webhook URL
-  const webhookUrl = "https://agentiwise.app.n8n.cloud/webhook-test/d71608a1-f6d9-437e-ad75-b86758ca4be1"
+  // Use environment variable for webhook URL
+  const webhookUrl = process.env.N8N_WEBHOOK_URL
 
   const defaultPrompt = "Place the uploaded product onto each template image as a realistic ad composite. Keep aspect ratio and add soft shadow."
 
@@ -96,8 +96,19 @@ export default function HomePage() {
       const uploadRes = await fetch(`/api/upload?execution_id=${encodeURIComponent(executionId)}`, { method: "POST", body: form })
       const uploadJson = await uploadRes.json()
       if (!uploadRes.ok) {
-        throw new Error(uploadJson?.error || "Upload failed")
+        // Handle upload errors with more detail
+        const errorMessage = uploadJson?.error || "Upload failed"
+        if (uploadJson?.fileSize && uploadJson?.maxSize) {
+          throw new Error(`${errorMessage} (File: ${(uploadJson.fileSize / (1024 * 1024)).toFixed(1)}MB, Max: ${uploadJson.maxSize / (1024 * 1024)}MB)`)
+        }
+        throw new Error(errorMessage)
       }
+      
+      // Show warning if using fallback
+      if (uploadJson?.warning) {
+        console.warn("Upload warning:", uploadJson.warning)
+      }
+      
       const userImageUrl: string = uploadJson.url
 
       // 2) Trigger n8n webhook with templates and prompts array

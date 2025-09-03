@@ -84,6 +84,10 @@ create table if not exists uploads (
   id uuid primary key default gen_random_uuid(),
   url text not null,
   file_name text,
+  execution_id uuid references executions(id),
+  file_size bigint,
+  content_type text,
+  is_fallback boolean default false,
   created_at timestamptz not null default now()
 );
 
