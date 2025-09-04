@@ -122,7 +122,7 @@ export function TemplatePicker({
             <DialogTitle className="text-white">Template Preview</DialogTitle>
           </DialogHeader>
           {previewUrl && (
-            <div className="relative w-[82vw] max-w-5xl h-[60vh] sm:h-[70vh]">
+            <div className="relative w-full max-w-4xl h-[60vh] sm:h-[70vh] mx-auto">
               <Image
                 src={previewUrl}
                 alt="Template Preview"
