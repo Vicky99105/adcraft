@@ -17,16 +17,16 @@ export default function AdminPage() {
   const templates = data?.templates || []
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen bg-black text-white">
       {/* Header */}
-      <header className="bg-gray-800 border-b border-gray-700">
+      <header className="bg-gray-900 border-b border-gray-800">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">AdCraft</h1>
-          <Button 
-            onClick={() => window.location.href = '/'}
-            variant="outline"
-            className="border-gray-600 text-gray-300 hover:bg-gray-700 bg-gray-800"
-          >
+                      <Button 
+              onClick={() => window.location.href = '/'}
+              variant="outline"
+              className="border-gray-600 text-gray-300 hover:bg-gray-800 bg-black"
+            >
             Back to App
           </Button>
         </div>
@@ -46,13 +46,13 @@ export default function AdminPage() {
             <h3 className="text-xl font-semibold mb-4 text-white">Current Templates</h3>
             <div className="grid gap-4">
               {templates.map((template) => (
-                <Card key={template.id} className="bg-gray-800 border-gray-700">
+                <Card key={template.id} className="bg-gray-900 border-gray-800">
                   <CardHeader>
                     <CardTitle className="text-lg text-white">Template: {template.file_name}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="flex gap-4">
-                      <div className="w-32 h-32 rounded-lg overflow-hidden border border-gray-600">
+                      <div className="w-32 h-32 rounded-lg overflow-hidden border border-gray-700">
                         <img 
                           src={template.url} 
                           alt={template.file_name}
@@ -64,7 +64,7 @@ export default function AdminPage() {
                         <Textarea
                           value={template.prompt}
                           readOnly
-                          className="min-h-24 bg-gray-700 border-gray-600 text-white"
+                          className="min-h-24 bg-gray-900 border-gray-700 text-white"
                         />
                         <p className="text-sm text-gray-400 mt-2">
                           ID: {template.id} | Created: {new Date(template.created_at).toLocaleDateString()}

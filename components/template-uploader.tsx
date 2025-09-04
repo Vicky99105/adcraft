@@ -81,20 +81,26 @@ export default function TemplateUploader() {
   return (
     <div className="space-y-6">
       {/* File Selection */}
-      <div className="rounded-lg border border-gray-700 p-4 bg-gray-800">
+      <div className="rounded-lg border border-gray-700 p-4 bg-gray-900">
         <h3 className="font-medium mb-2 text-white">Upload Template Images</h3>
         <p className="text-sm text-gray-300 mb-3">
           Select template images to upload. You'll be able to customize prompts for each template.
         </p>
         <div className="flex gap-2 items-center">
-          <input
-            id="template-file-input"
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={(e) => handleFileSelection(e.target.files)}
-            className="block w-full text-sm bg-gray-700 border-gray-600 text-white rounded"
-          />
+          <div className="relative">
+            <input
+              id="template-file-input"
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) => handleFileSelection(e.target.files)}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+            <div className="flex items-center justify-center px-4 py-2 bg-gray-900 border-2 border-gray-700 rounded-md text-white hover:bg-gray-800 transition-colors cursor-pointer">
+              <span className="text-sm">Choose files</span>
+              {files && <span className="ml-2 text-xs text-gray-400">({files.length} selected)</span>}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -108,13 +114,13 @@ export default function TemplateUploader() {
           
           <div className="grid gap-4">
             {filePrompts.map((filePrompt, index) => (
-              <Card key={index} className="bg-gray-800 border-gray-700">
+              <Card key={index} className="bg-gray-900 border-gray-800">
                 <CardHeader>
                   <CardTitle className="text-lg text-white">Template {index + 1}: {filePrompt.file.name}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="flex gap-4">
-                    <div className="w-32 h-32 rounded-lg overflow-hidden border border-gray-600">
+                    <div className="w-32 h-32 rounded-lg overflow-hidden border border-gray-700">
                       <img 
                         src={URL.createObjectURL(filePrompt.file)} 
                         alt={`Preview ${index + 1}`}
@@ -128,7 +134,7 @@ export default function TemplateUploader() {
                         value={filePrompt.prompt}
                         onChange={(e) => updatePrompt(index, e.target.value)}
                         placeholder="Describe how the ad should look for this template..."
-                        className="min-h-24 bg-gray-700 border-gray-600 text-white"
+                                                  className="min-h-24 bg-gray-900 border-gray-700 text-white"
                       />
                     </div>
                   </div>
@@ -149,7 +155,7 @@ export default function TemplateUploader() {
               variant="outline" 
               onClick={handleCancel}
               disabled={isUploading}
-              className="border-gray-600 text-gray-300 hover:bg-gray-700 bg-gray-800"
+              className="border-gray-600 text-gray-300 hover:bg-gray-800 bg-black"
             >
               Cancel
             </Button>

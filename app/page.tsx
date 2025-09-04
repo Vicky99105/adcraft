@@ -195,9 +195,9 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen bg-black text-white">
       {/* Header */}
-      <header className="bg-gray-800 border-b border-gray-700">
+      <header className="bg-gray-900 border-b border-gray-800">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">AdCraft</h1>
           <div className="flex items-center gap-4">
@@ -212,7 +212,7 @@ export default function HomePage() {
             )}
             {currentStep === 'upload' && (
               <div className="flex gap-2">
-                <Button variant="outline" onClick={handleBack} className="border-gray-600 text-gray-300 hover:bg-gray-700 bg-gray-800">
+                <Button variant="outline" onClick={handleBack} className="border-gray-600 text-gray-300 hover:bg-gray-800 bg-black">
                   Back
                 </Button>
                 {file && (
@@ -224,7 +224,7 @@ export default function HomePage() {
             )}
             {currentStep === 'prompts' && (
               <div className="flex gap-2">
-                <Button variant="outline" onClick={handleBack} className="border-gray-600 text-gray-300 hover:bg-gray-700 bg-gray-800">
+                <Button variant="outline" onClick={handleBack} className="border-gray-600 text-gray-300 hover:bg-gray-800 bg-black">
                   Back
                 </Button>
                 <Button 
@@ -238,7 +238,7 @@ export default function HomePage() {
             )}
             {currentStep === 'results' && (
               <div className="flex gap-2">
-                <Button variant="outline" onClick={handleBack} className="border-gray-600 text-gray-300 hover:bg-gray-700 bg-gray-800">
+                <Button variant="outline" onClick={handleBack} className="border-gray-600 text-gray-300 hover:bg-gray-800 bg-black">
                   Back
                 </Button>
                 <Button 
@@ -250,7 +250,7 @@ export default function HomePage() {
                     setTemplatePrompts([])
                     setResp(null)
                   }}
-                  className="bg-green-600 hover:bg-green-700 text-white"
+                  className="border-gray-600 text-gray-300 hover:bg-gray-800 bg-black"
                 >
                   Home
                 </Button>
@@ -295,7 +295,7 @@ export default function HomePage() {
               <p className="text-gray-300">Upload the product image you want to feature in your ads</p>
             </div>
             
-            <Card className="max-w-2xl mx-auto bg-gray-800 border-gray-700">
+            <Card className="max-w-2xl mx-auto bg-gray-900 border-gray-800">
               <CardHeader>
                 <CardTitle className="text-lg text-white">Upload your product image</CardTitle>
               </CardHeader>
@@ -318,13 +318,13 @@ export default function HomePage() {
             
             <div className="grid gap-6 max-w-4xl mx-auto">
               {templatePrompts.map((template, index) => (
-                <Card key={template.url} className="bg-gray-800 border-gray-700">
+                <Card key={template.url} className="bg-gray-900 border-gray-800">
                   <CardHeader>
                     <CardTitle className="text-lg text-white">Template {index + 1}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex gap-4">
-                      <div className="w-32 h-32 rounded-lg overflow-hidden border border-gray-600">
+                      <div className="w-32 h-32 rounded-lg overflow-hidden border border-gray-700">
                         <img 
                           src={template.url} 
                           alt={`Template ${index + 1}`}
@@ -338,7 +338,7 @@ export default function HomePage() {
                           value={template.prompt}
                           onChange={(e) => updateTemplatePrompt(template.url, e.target.value)}
                           placeholder="Describe how the ad should look for this template..."
-                          className="min-h-24 bg-gray-700 border-gray-600 text-white"
+                          className="min-h-24 bg-gray-900 border-gray-700 text-white"
                         />
                       </div>
                     </div>
@@ -374,7 +374,7 @@ export default function HomePage() {
               <>
                 {!resp.ok ? (
                   <div className="max-w-2xl mx-auto">
-                    <Card className="bg-red-900 border-red-700">
+                    <Card className="bg-gray-900 border-gray-800">
                       <CardHeader>
                         <CardTitle className="text-lg text-white flex items-center gap-2">
                           <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -391,7 +391,7 @@ export default function HomePage() {
                           </p>
                         </div>
                         
-                        <div className="bg-gray-800 rounded-lg p-4">
+                        <div className="bg-gray-900 rounded-lg p-4">
                           <h3 className="text-white font-medium mb-2">Technical Details</h3>
                           <p className="text-gray-300 text-sm">
                             {resp.error?.includes("n8n webhook") ? (
@@ -453,7 +453,7 @@ export default function HomePage() {
                     </Card>
                   </div>
                 ) : (
-                  <Card className="bg-gray-800 border-gray-700">
+                  <Card className="bg-gray-900 border-gray-800">
                     <CardHeader>
                       <CardTitle className="text-lg text-white">Results</CardTitle>
                     </CardHeader>

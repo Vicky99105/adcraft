@@ -5,7 +5,7 @@ export function ResultGrid({ payload }: { payload: any }) {
 
   if (urls.length === 0) {
     return (
-      <pre className="text-xs whitespace-pre-wrap break-words bg-muted p-3 rounded-md">
+      <pre className="text-xs whitespace-pre-wrap break-words bg-gray-900 p-3 rounded-md text-white">
         {JSON.stringify(payload, null, 2)}
       </pre>
     )
@@ -14,7 +14,7 @@ export function ResultGrid({ payload }: { payload: any }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
       {urls.map((u, i) => (
-        <figure key={u + i} className="rounded-lg border overflow-hidden">
+        <figure key={u + i} className="rounded-lg border border-gray-700 overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={u || "/placeholder.svg"} alt={`Generated Ad ${i + 1}`} className="w-full h-64 object-cover" />
           <figcaption className="text-xs text-muted-foreground p-2 text-center">

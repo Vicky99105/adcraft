@@ -57,13 +57,19 @@ export function UploadImage({
     <div className="grid gap-3">
       <div className="grid gap-2">
         <Label htmlFor="upload" className="text-gray-300">Your product image</Label>
-        <Input
-          id="upload"
-          type="file"
-          accept="image/png,image/jpeg,image/webp"
-          onChange={handleFileChange}
-          className="bg-gray-700 border-gray-600 text-white"
-        />
+        <div className="relative">
+          <Input
+            id="upload"
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            onChange={handleFileChange}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          />
+          <div className="flex items-center justify-center px-4 py-2 bg-gray-900 border-2 border-gray-700 rounded-md text-white hover:bg-gray-800 transition-colors cursor-pointer">
+            <span className="text-sm">Choose file</span>
+            {file && <span className="ml-2 text-xs text-gray-400">({file.name})</span>}
+          </div>
+        </div>
         <p className="text-xs text-gray-400">{helper}</p>
         
         {file && (
@@ -83,7 +89,7 @@ export function UploadImage({
       )}
 
       {preview && !fileError?.includes('too large') && (
-        <div className="relative w-full max-w-sm aspect-square overflow-hidden rounded-lg border border-gray-600">
+        <div className="relative w-full max-w-sm aspect-square overflow-hidden rounded-lg border border-gray-700">
           <Image
             src={preview || "/placeholder.svg"}
             alt="Uploaded preview"

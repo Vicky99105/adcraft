@@ -57,7 +57,7 @@ export function TemplatePicker({
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
         {/* Add Template Card */}
         <div
-          className="group rounded-lg border-2 border-dashed border-gray-600 bg-gray-800 hover:bg-gray-700 transition-colors cursor-pointer"
+          className="group rounded-lg border-2 border-dashed border-gray-700 bg-gray-900 hover:bg-gray-800 transition-colors cursor-pointer"
           onClick={handleAddTemplate}
         >
           <div className="relative aspect-square overflow-hidden rounded-t-lg flex items-center justify-center">
@@ -74,7 +74,7 @@ export function TemplatePicker({
           return (
             <div
               key={template.id + idx}
-              className="group rounded-lg border border-gray-700 bg-gray-800 hover:bg-gray-700 transition-colors relative cursor-pointer"
+              className="group rounded-lg border border-gray-700 bg-gray-900 hover:bg-gray-800 transition-colors relative cursor-pointer"
               onClick={() => toggle(template)}
             >
               <div className="relative aspect-square overflow-hidden rounded-t-lg">
@@ -117,12 +117,12 @@ export function TemplatePicker({
 
       {/* Preview Dialog */}
       <Dialog open={!!previewUrl} onOpenChange={() => setPreviewUrl(null)}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-5xl bg-gray-900 border-gray-800">
           <DialogHeader>
-            <DialogTitle>Template Preview</DialogTitle>
+            <DialogTitle className="text-white">Template Preview</DialogTitle>
           </DialogHeader>
           {previewUrl && (
-            <div className="relative w-full h-96">
+            <div className="relative w-[82vw] max-w-5xl h-[60vh] sm:h-[70vh]">
               <Image
                 src={previewUrl}
                 alt="Template Preview"
