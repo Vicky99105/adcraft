@@ -12,12 +12,12 @@ export function ResultGrid({ payload }: { payload: any }) {
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
       {urls.map((u, i) => (
-        <figure key={u + i} className="rounded-lg border border-gray-700 overflow-hidden">
+        <figure key={u + i} className="rounded-lg border border-gray-700 overflow-hidden bg-gray-900">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={u || "/placeholder.svg"} alt={`Generated Ad ${i + 1}`} className="w-full h-64 object-cover" />
-          <figcaption className="text-xs text-muted-foreground p-2 text-center">
+          <img src={u || "/placeholder.svg"} alt={`Generated Ad ${i + 1}`} className="w-full h-80 sm:h-96 md:h-[28rem] object-contain" />
+          <figcaption className="text-xs text-gray-300 p-3 text-center bg-gray-900">
             Generated Ad {i + 1}
           </figcaption>
         </figure>
