@@ -10,4 +10,5 @@ export interface Template {
   file_name: string
   prompt: string
   created_at: string
+  is_visible?: boolean
 }

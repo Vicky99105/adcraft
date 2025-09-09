@@ -45,12 +45,16 @@ export async function POST(request: Request) {
       uploaded.push(urlData.publicUrl)
 
       // Log in DB
-      await supabase.from('templates').insert({ 
+      const { data: dbData } = await supabase.from('templates').insert({ 
         url: urlData.publicUrl, 
         file_name: fileName,
-        prompt: prompt
-      })
+        prompt: prompt,
+        is_visible: true
+      }).select('id')
     }
+
+    // Log summary only
+    console.log(`API: /api/templates/upload - Uploaded ${files.length} template(s)`)
 
     return NextResponse.json({ uploaded }, { status: 201 })
   } catch (err: any) {

@@ -74,10 +74,16 @@ export function ResultGrid({ payload }: { payload: any }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
       {urls.map((u, i) => (
-        <figure key={u + i} className="rounded-lg border border-gray-700 overflow-hidden bg-gray-900">
+        <figure key={u + i} className="rounded-lg border border-gray-700 overflow-hidden bg-gray-900 flex flex-col">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={u || "/placeholder.svg"} alt={`Generated Ad ${i + 1}`} className="w-full h-80 sm:h-96 md:h-[28rem] object-contain" />
-          <figcaption className="text-xs text-gray-300 p-3 text-center bg-gray-900">
+          <div className="flex-1 flex items-center justify-center bg-gray-800 p-4">
+            <img 
+              src={u || "/placeholder.svg"} 
+              alt={`Generated Ad ${i + 1}`} 
+              className="max-w-full max-h-[400px] w-auto h-auto object-contain" 
+            />
+          </div>
+          <figcaption className="text-xs text-gray-300 p-3 text-center bg-gray-900 flex-shrink-0">
             <div className="flex items-center justify-between">
               <span>Generated Ad {i + 1}</span>
               <div className="flex items-center gap-2">

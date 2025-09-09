@@ -46,7 +46,7 @@ export function UploadImage({
     return () => URL.revokeObjectURL(url)
   }, [file, onChange])
 
-  const helper = useMemo(() => "PNG, JPG, or WebP up to 50MB (recommended: under 10MB). We'll upload it to Supabase Storage and pass a URL to your n8n workflow.", [])
+  const helper = useMemo(() => "PNG, JPG, or WebP up to 2MB. We'll upload it to Supabase Storage and pass a URL to your n8n workflow.", [])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0] || null
@@ -89,14 +89,16 @@ export function UploadImage({
       )}
 
       {preview && !fileError?.includes('too large') && (
-        <div className="relative w-full max-w-sm aspect-square overflow-hidden rounded-lg border border-gray-700">
-          <Image
-            src={preview || "/placeholder.svg"}
-            alt="Uploaded preview"
-            fill
-            sizes="300px"
-            className="object-cover"
-          />
+        <div className="relative w-full max-w-md mx-auto">
+          <div className="relative w-full h-64 bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+            <Image
+              src={preview || "/placeholder.svg"}
+              alt="Uploaded preview"
+              fill
+              sizes="(max-width: 768px) 100vw, 448px"
+              className="object-contain"
+            />
+          </div>
         </div>
       )}
     </div>

@@ -8,6 +8,10 @@ A Next.js application that generates product ads using AI and n8n workflows.
 - **Product Image Upload**: Upload product images with automatic size validation
 - **AI-Powered Generation**: Generate ads using n8n workflows and AI
 - **Result Storage**: Store generated results in Supabase storage
+- **Admin Panel**: Password-protected admin functions for template management
+- **Template Visibility Control**: Show/hide templates from public view
+- **Bulk Operations**: Bulk delete templates with storage cleanup
+- **Prompt Editing**: Edit template prompts directly from the admin panel
 
 ## File Size Limits
 
@@ -33,6 +37,9 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
 # n8n Webhook Configuration
 N8N_WEBHOOK_URL=your_n8n_webhook_url
+
+# Admin Password (optional, defaults to "admin123")
+NEXT_PUBLIC_ADMIN_PASSWORD=your_secure_admin_password
 ```
 
 ## Development
@@ -51,3 +58,15 @@ npm run dev
 
 ### Database Schema Updates
 If you need to update your database schema, run the SQL script in `database_update.sql` in your Supabase SQL editor.
+
+### Admin Panel Access
+- **Template Upload**: Publicly accessible at `/admin`
+- **Admin Management**: Password-protected at `/admin/secure`
+- **Default Password**: `admin123` (change via `NEXT_PUBLIC_ADMIN_PASSWORD` environment variable)
+- **Admin Functions**: Template visibility control, bulk deletion, prompt editing, template management
+
+### Template Visibility
+- Templates are visible by default when uploaded
+- Use the admin panel to hide/show templates from public view
+- Hidden templates won't appear on the main landing page
+- Run `add_visibility_column.sql` in Supabase to add the visibility feature

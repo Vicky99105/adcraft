@@ -1,27 +1,31 @@
 import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    console.log('Listing templates from Supabase database...')
+    const { searchParams } = new URL(request.url)
+    const includeHidden = searchParams.get('include_hidden') === 'true'
     
-    // Fetch templates from the database table instead of storage listing
-    const { data: templates, error } = await supabase
+    // Build query based on whether to include hidden templates
+    let query = supabase
       .from('templates')
-      .select('id, url, file_name, prompt, created_at')
+      .select('id, url, file_name, prompt, created_at, is_visible')
       .order('created_at', { ascending: false })
 
-    console.log('Supabase templates response:', { templates, error })
+    // Only show visible templates for regular users
+    if (!includeHidden) {
+      query = query.eq('is_visible', true)
+    }
+
+    const { data: templates, error } = await query
 
     if (error) {
       console.error('Supabase templates error:', error)
       return NextResponse.json({ templates: [] }, { status: 200 })
     }
 
-    console.log('Templates found:', templates?.length || 0)
-    if (templates && templates.length > 0) {
-      console.log('Template URLs:', templates.map(t => t.url))
-    }
+    // Log summary only
+    console.log(`API: /api/templates/list - Found ${templates?.length || 0} templates (includeHidden: ${includeHidden})`)
 
     // Return templates with their prompts
     return NextResponse.json({ templates: templates || [] }, { status: 200 })
