@@ -391,47 +391,10 @@ export default function HomePage() {
                       </CardHeader>
                       <CardContent className="space-y-4">
                         <div className="bg-red-800 rounded-lg p-4">
-                          <h3 className="text-white font-medium mb-2">What happened?</h3>
+                          <h3 className="text-white font-medium mb-2">Something went wrong</h3>
                           <p className="text-red-200 text-sm">
-                            {resp.error || "An unexpected error occurred during the generation process."}
+                            The app encountered an error while generating your ads. Please report this issue to <a href="mailto:vp991058@gmail.com" className="text-red-300 underline hover:text-red-200">vp991058@gmail.com</a> and we'll help you resolve it.
                           </p>
-                        </div>
-                        
-                        <div className="bg-gray-900 rounded-lg p-4">
-                          <h3 className="text-white font-medium mb-2">Technical Details</h3>
-                          <p className="text-gray-300 text-sm">
-                            {resp.error?.includes("n8n webhook") ? (
-                              "The AI processing service (n8n webhook) is not responding or returned an error."
-                            ) : resp.error?.includes("empty") || resp.error?.includes("no images") ? (
-                              "The AI service completed processing but didn't generate any images. This usually means the prompts need to be more specific."
-                            ) : resp.error?.includes("upload") ? (
-                              "There was an issue uploading your product image to our servers."
-                            ) : (
-                              "A technical issue occurred during the generation process."
-                            )}
-                          </p>
-                        </div>
-
-                        <div className="bg-blue-900 rounded-lg p-4">
-                          <h3 className="text-white font-medium mb-2">How to fix this</h3>
-                          <ul className="text-blue-200 text-sm space-y-2">
-                            <li className="flex items-start gap-2">
-                              <span className="text-blue-300 mt-0.5">•</span>
-                              <span>Check your internet connection and try again</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <span className="text-blue-300 mt-0.5">•</span>
-                              <span>Make your prompts more specific and descriptive</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <span className="text-blue-300 mt-0.5">•</span>
-                              <span>Try with a different product image</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <span className="text-blue-300 mt-0.5">•</span>
-                              <span>If the problem persists, email us at <a href="mailto:vp991058@gmail.com" className="text-blue-300 underline hover:text-blue-200">vp991058@gmail.com</a></span>
-                            </li>
-                          </ul>
                         </div>
 
                         <div className="flex gap-3 pt-2">
@@ -450,7 +413,7 @@ export default function HomePage() {
                               setTemplatePrompts([])
                               setResp(null)
                             }}
-                            className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                            className="border-gray-600 text-gray-300 hover:bg-gray-800 bg-black"
                           >
                             Start Over
                           </Button>
