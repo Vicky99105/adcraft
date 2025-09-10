@@ -11,13 +11,109 @@ import { TemplatePicker } from "@/components/template-picker"
 import { UploadImage } from "@/components/upload-image"
 import { ResultGrid } from "@/components/result-grid"
 import { Badge } from "@/components/ui/badge"
-import { ChevronRight } from "lucide-react"
+import { ChevronRight, Star } from "lucide-react"
 import useSWR from "swr"
 import type { TriggerResponse, Template } from "@/types"
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
 type Step = 'templates' | 'upload' | 'prompts' | 'results'
+
+const FeedbackButton = ({ 
+  onShowForm, 
+  isVisible = true 
+}: { 
+  onShowForm: () => void
+  isVisible?: boolean 
+}) => {
+  if (!isVisible) return null
+  
+  return (
+    <Button 
+      variant="outline" 
+      onClick={onShowForm}
+      className="bg-blue-600 hover:bg-blue-700 text-white"
+    >
+      Give Feedback
+    </Button>
+  )
+}
+
+const FeedbackForm = ({ onSubmit }: { onSubmit: (rating: number, feedback: string, email: string) => void }) => {
+  const [rating, setRating] = useState(0)
+  const [feedback, setFeedback] = useState('')
+  const [email, setEmail] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (rating === 0) return
+    
+    setSubmitting(true)
+    await onSubmit(rating, feedback, email)
+    setSubmitting(false)
+  }
+
+  return (
+    <Card className="bg-gray-900 border-gray-800">
+      <CardHeader>
+        <CardTitle className="text-lg text-white">Rate Your Experience</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label className="text-gray-300 mb-2 block">Rating</Label>
+            <div className="flex gap-1">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setRating(star)}
+                  className="text-2xl hover:scale-110 transition-transform"
+                >
+                  <Star 
+                    className={`w-8 h-8 ${star <= rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-600'}`} 
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          <div>
+            <Label htmlFor="email" className="text-gray-300 mb-2 block">Email (optional)</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="your@email.com"
+              className="bg-gray-800 border-gray-700 text-white"
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="feedback" className="text-gray-300 mb-2 block">Feedback (optional)</Label>
+            <Textarea
+              id="feedback"
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+              placeholder="Tell us how we can improve..."
+              className="min-h-20 bg-gray-800 border-gray-700 text-white"
+            />
+          </div>
+          
+          <Button 
+            type="submit" 
+            disabled={rating === 0 || submitting}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            {submitting ? 'Submitting...' : 'Submit Feedback'}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  )
+}
 
 interface TemplateWithPrompt {
   url: string
@@ -35,6 +131,9 @@ export default function HomePage() {
   const [submitting, setSubmitting] = useState(false)
   const [resp, setResp] = useState<TriggerResponse | null>(null)
   const [processingMessage, setProcessingMessage] = useState<string>('')
+  const [currentExecutionId, setCurrentExecutionId] = useState<string | null>(null)
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
+  const [showFeedbackForm, setShowFeedbackForm] = useState(false)
   // Use environment variable for webhook URL
   const webhookUrl = process.env.N8N_WEBHOOK_URL
 
@@ -75,6 +174,8 @@ export default function HomePage() {
     setCurrentStep('results')
     setResp(null)
     setProcessingMessage('Initializing generation process...')
+    setFeedbackSubmitted(false)
+    setShowFeedbackForm(false)
 
     try {
       // 0) Create an execution first
@@ -92,6 +193,7 @@ export default function HomePage() {
         throw new Error(execJson?.error || 'Failed to create execution')
       }
       const executionId: string = execJson.execution_id
+      setCurrentExecutionId(executionId)
 
       // 1) Upload product image
       setProcessingMessage('Uploading product image...')
@@ -194,6 +296,25 @@ export default function HomePage() {
     )
   }
 
+  const handleFeedbackSubmit = async (rating: number, feedback: string, email: string) => {
+    if (!currentExecutionId) return
+    
+    try {
+      await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ execution_id: currentExecutionId, rating, feedback, email })
+      })
+      setFeedbackSubmitted(true)
+      setShowFeedbackForm(false)
+    } catch (error) {
+      console.error('Failed to submit feedback:', error)
+    }
+  }
+
+  // Helper to determine if feedback should be shown
+  const shouldShowFeedback = !feedbackSubmitted && !!currentExecutionId && !submitting
+
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Header */}
@@ -206,7 +327,7 @@ export default function HomePage() {
                 onClick={handleNext} 
                 className="bg-blue-600 hover:bg-blue-700"
               >
-                Generate Ads
+                Upload Product
                 <ChevronRight className="w-4 h-4 ml-2" />
               </Button>
             )}
@@ -254,6 +375,9 @@ export default function HomePage() {
                     setFile(null)
                     setTemplatePrompts([])
                     setResp(null)
+                    setCurrentExecutionId(null)
+                    setFeedbackSubmitted(false)
+                    setShowFeedbackForm(false)
                   }}
                   disabled={submitting}
                   className="border-gray-600 text-gray-300 hover:bg-gray-800 bg-black disabled:opacity-50 disabled:cursor-not-allowed"
@@ -412,24 +536,94 @@ export default function HomePage() {
                               setFile(null)
                               setTemplatePrompts([])
                               setResp(null)
+                              setCurrentExecutionId(null)
+                              setFeedbackSubmitted(false)
+                              setShowFeedbackForm(false)
                             }}
                             className="border-gray-600 text-gray-300 hover:bg-gray-800 bg-black"
                           >
                             Start Over
                           </Button>
+                          <FeedbackButton 
+                            onShowForm={() => setShowFeedbackForm(true)}
+                            isVisible={shouldShowFeedback}
+                          />
                         </div>
                       </CardContent>
                     </Card>
+                    
+                    {showFeedbackForm && !feedbackSubmitted && currentExecutionId && (
+                      <div className="mt-6">
+                        <FeedbackForm onSubmit={handleFeedbackSubmit} />
+                      </div>
+                    )}
+                    
+                    {feedbackSubmitted && (
+                      <div className="mt-6">
+                        <Card className="bg-gray-900 border-gray-800">
+                          <CardContent className="text-center py-6">
+                            <p className="text-green-400">Thank you for your feedback!</p>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    )}
                   </div>
                 ) : (
-                  <Card className="bg-gray-900 border-gray-800">
-                    <CardHeader>
-                      <CardTitle className="text-lg text-white">Results</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ResultGrid payload={resp.data} />
-                    </CardContent>
-                  </Card>
+                  <>
+                    <Card className="bg-gray-900 border-gray-800">
+                      <CardHeader>
+                        <CardTitle className="text-lg text-white">Results</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <ResultGrid payload={resp.data} />
+                      </CardContent>
+                    </Card>
+                    
+                    <div className="flex gap-3 justify-center pt-4">
+                      <Button 
+                        onClick={() => setCurrentStep('prompts')}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        Try Again
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setCurrentStep('templates')
+                          setSelectedTemplates([])
+                          setFile(null)
+                          setTemplatePrompts([])
+                          setResp(null)
+                          setCurrentExecutionId(null)
+                          setFeedbackSubmitted(false)
+                          setShowFeedbackForm(false)
+                        }}
+                        className="border-gray-600 text-gray-300 hover:bg-gray-800 bg-black"
+                      >
+                        Start Over
+                      </Button>
+                      <FeedbackButton 
+                        onShowForm={() => setShowFeedbackForm(true)}
+                        isVisible={shouldShowFeedback}
+                      />
+                    </div>
+                    
+                    {showFeedbackForm && !feedbackSubmitted && currentExecutionId && (
+                      <div className="mt-6">
+                        <FeedbackForm onSubmit={handleFeedbackSubmit} />
+                      </div>
+                    )}
+                    
+                    {feedbackSubmitted && (
+                      <div className="mt-6">
+                        <Card className="bg-gray-900 border-gray-800">
+                          <CardContent className="text-center py-6">
+                            <p className="text-green-400">Thank you for your feedback!</p>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )}
