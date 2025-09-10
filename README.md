@@ -70,3 +70,39 @@ If you need to update your database schema, run the SQL script in `database_upda
 - Use the admin panel to hide/show templates from public view
 - Hidden templates won't appear on the main landing page
 - Run `add_visibility_column.sql` in Supabase to add the visibility feature
+
+
+📁 /app/
+├── 📄 layout.tsx (27 lines) - Root layout with fonts and analytics
+├── 📄 page.tsx (474 lines) - Main application (4-step workflow)
+├── 📄 globals.css (135 lines) - Global styles
+├── 📁 admin/
+│   ├── �� page.tsx (54 lines) - Template upload page
+│   └── 📁 secure/
+│       └── 📄 page.tsx (432 lines) - Admin management panel
+└── �� api/ - Backend API routes
+    ├── �� executions/create/route.ts
+    ├── 📁 results/upload/route.ts
+    ├── �� templates/
+    │   ├── 📁 bulk-delete/route.ts
+    │   ├── 📁 list/route.ts
+    │   ├── 📁 prompt/route.ts
+    │   ├── 📁 upload/route.ts
+    │   └── 📁 visibility/route.ts
+    ├── 📁 trigger/route.ts
+    └── 📁 upload/route.ts
+
+📁 /components/ - Reusable UI components
+├── 📄 result-grid.tsx (135 lines) - Displays generated ads
+├── �� template-picker.tsx (140 lines) - Template selection interface
+├── 📄 template-uploader.tsx - Admin template upload
+├── �� upload-image.tsx - Image upload component
+└── 📁 ui/ - shadcn/ui component library (30+ components)
+
+�� /lib/ - Utilities
+├── 📄 supabase.ts - Database client
+└── 📄 utils.ts - Helper functions
+
+📁 /hooks/ - Custom React hooks
+├── 📄 use-mobile.ts
+└── �� use-toast.ts

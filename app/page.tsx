@@ -238,7 +238,12 @@ export default function HomePage() {
             )}
             {currentStep === 'results' && (
               <div className="flex gap-2">
-                <Button variant="outline" onClick={handleBack} className="border-gray-600 text-gray-300 hover:bg-gray-800 bg-black">
+                <Button 
+                  variant="outline" 
+                  onClick={handleBack} 
+                  disabled={submitting}
+                  className="border-gray-600 text-gray-300 hover:bg-gray-800 bg-black disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   Back
                 </Button>
                 <Button 
@@ -250,7 +255,8 @@ export default function HomePage() {
                     setTemplatePrompts([])
                     setResp(null)
                   }}
-                  className="border-gray-600 text-gray-300 hover:bg-gray-800 bg-black"
+                  disabled={submitting}
+                  className="border-gray-600 text-gray-300 hover:bg-gray-800 bg-black disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Home
                 </Button>
