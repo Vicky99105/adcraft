@@ -7,6 +7,9 @@ export async function POST(request: Request) {
     const files = form.getAll("files") as File[]
     const prompts = form.getAll("prompts") as string[]
     const categories = form.getAll("categories") as string[]
+    const brands = form.getAll("brands") as string[]
+    const nCountries = form.getAll("n_countries") as string[]
+    const reaches = form.getAll("reaches") as string[]
     const source = (form.get("source") as string | null) || null
 
     if (!files || files.length === 0) {
@@ -48,6 +51,10 @@ export async function POST(request: Request) {
 
       // Attempt extended insert with optional fields, fallback if columns don't exist
       const cat = (categories && categories[i]) ? String(categories[i]) : null
+      const brand = (brands && brands[i]) ? String(brands[i]) : null
+      const nCountriesNum = (nCountries && nCountries[i]) ? parseInt(String(nCountries[i])) : null
+      const reachNum = (reaches && reaches[i]) ? parseInt(String(reaches[i])) : null
+
       const baseRow: any = {
         url: urlData.publicUrl,
         file_name: fileName,
@@ -55,8 +62,11 @@ export async function POST(request: Request) {
         is_visible: true,
       }
       const extendedRow: any = { ...baseRow }
-      if (source) extendedRow.source = source
+      if (source) extendedRow.src = source
       if (cat) extendedRow.category = cat
+      if (brand) extendedRow.brand = brand
+      if (nCountriesNum && nCountriesNum > 0) extendedRow.n_countries = nCountriesNum
+      if (reachNum && reachNum > 0) extendedRow.reach = reachNum
 
       let insertError: any = null
       let dbRes = await supabase.from('templates').insert(extendedRow).select('id')

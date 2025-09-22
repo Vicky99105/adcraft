@@ -14,4 +14,8 @@ export interface Template {
   // Optional metadata for filtering
   source?: "meta" | "youtube" | string
   category?: string
+  // Stats for hover display
+  n_countries?: number
+  brand?: string
+  reach?: number
 }

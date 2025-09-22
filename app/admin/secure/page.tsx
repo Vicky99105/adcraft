@@ -161,8 +161,23 @@ export default function SecureAdminPage() {
     }
   }
 
-  const visibleCount = templates.filter(t => t.is_visible !== false).length
-  const hiddenCount = templates.length - visibleCount
+  // Group templates by category
+  const categoryGroups = templates.reduce((acc, template) => {
+    const category = (template as any).category || 'Uncategorized'
+    if (!acc[category]) {
+      acc[category] = {
+        templates: [],
+        visibleCount: 0,
+        totalCount: 0
+      }
+    }
+    acc[category].templates.push(template)
+    acc[category].totalCount++
+    if (template.is_visible !== false) {
+      acc[category].visibleCount++
+    }
+    return acc
+  }, {} as Record<string, { templates: Template[], visibleCount: number, totalCount: number }>)
 
   if (!isAuthenticated) {
     return (
@@ -252,13 +267,18 @@ export default function SecureAdminPage() {
           <div className="text-center">
             <h2 className="text-3xl font-semibold mb-2 text-white">Template Management</h2>
             <p className="text-gray-300">Manage template visibility and delete templates</p>
-            <div className="flex justify-center gap-4 mt-4">
+            <div className="flex justify-center gap-4 mt-4 flex-wrap">
+              <Badge variant="outline" className="border-blue-600 text-blue-400">
+                {templates.length} Total Templates
+              </Badge>
               <Badge variant="outline" className="border-green-600 text-green-400">
-                {visibleCount} Visible
+                {templates.filter(t => t.is_visible !== false).length} Visible
               </Badge>
-              <Badge variant="outline" className="border-orange-600 text-orange-400">
-                {hiddenCount} Hidden
-              </Badge>
+              {Object.keys(categoryGroups).length > 1 && (
+                <Badge variant="outline" className="border-purple-600 text-purple-400">
+                  {Object.keys(categoryGroups).length} Categories
+                </Badge>
+              )}
             </div>
           </div>
           
@@ -302,9 +322,8 @@ export default function SecureAdminPage() {
             </Card>
           )}
           
-          {/* Templates Grid */}
+          {/* Templates by Category */}
           <div className="mt-8">
-            <h3 className="text-xl font-semibold mb-4 text-white">All Templates</h3>
             {templates.length === 0 ? (
               <Card className="bg-gray-900 border-gray-800">
                 <CardContent className="text-center py-8">
@@ -312,115 +331,146 @@ export default function SecureAdminPage() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {templates.map((template) => (
-                  <Card key={template.id} className={`bg-gray-900 border-gray-800 ${template.is_visible === false ? 'opacity-60' : ''}`}>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Checkbox
-                            checked={selectedTemplates.includes(template.id)}
-                            onCheckedChange={(checked) => handleTemplateSelect(template.id, checked as boolean)}
-                          />
-                          <CardTitle className="text-sm text-white truncate">
-                            {template.file_name}
-                          </CardTitle>
-                        </div>
-                        {template.is_visible === false && (
-                          <Badge variant="outline" className="border-orange-600 text-orange-400 text-xs">
-                            Hidden
-                          </Badge>
-                        )}
+              <div className="space-y-8">
+                {Object.entries(categoryGroups)
+                  .sort(([a], [b]) => a.localeCompare(b))
+                  .map(([category, { templates: categoryTemplates, visibleCount, totalCount }]) => (
+                  <div key={category} className="space-y-4">
+                    {/* Category Header */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <h3 className="text-xl font-semibold text-white">{category}</h3>
+                        <Badge variant="outline" className="border-green-600 text-green-400">
+                          {visibleCount}/{totalCount} Visible
+                        </Badge>
                       </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="relative w-full h-40 rounded-lg overflow-hidden border border-gray-700">
-                        <img 
-                          src={template.url} 
-                          alt={template.file_name}
-                          className="w-full h-full object-contain bg-gray-800"
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id={`select-category-${category}`}
+                          checked={categoryTemplates.every(t => selectedTemplates.includes(t.id))}
+                          onCheckedChange={(checked) => {
+                            const categoryTemplateIds = categoryTemplates.map(t => t.id)
+                            if (checked) {
+                              setSelectedTemplates(prev => [...new Set([...prev, ...categoryTemplateIds])])
+                            } else {
+                              setSelectedTemplates(prev => prev.filter(id => !categoryTemplateIds.includes(id)))
+                            }
+                          }}
                         />
+                        <label htmlFor={`select-category-${category}`} className="text-sm text-gray-300">
+                          Select All ({categoryTemplates.filter(t => selectedTemplates.includes(t.id)).length}/{categoryTemplates.length})
+                        </label>
                       </div>
-                      <div className="space-y-2">
-                        <p className="text-xs text-gray-400">
-                          ID: {template.id.substring(0, 8)}...
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          Created: {new Date(template.created_at).toLocaleDateString()}
-                        </p>
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <p className="text-xs text-gray-300 font-medium">Prompt:</p>
-                            {editingPrompt !== template.id && (
-                              <Button
-                                onClick={() => handleEditPrompt(template.id, template.prompt)}
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 px-2 text-gray-400 hover:text-white hover:bg-gray-800"
-                              >
-                                <Edit3 className="w-3 h-3" />
-                              </Button>
-                            )}
-                          </div>
-                          {editingPrompt === template.id ? (
-                            <div className="space-y-2">
-                              <Textarea
-                                value={promptValue}
-                                onChange={(e) => setPromptValue(e.target.value)}
-                                className="min-h-16 text-xs bg-gray-800 border-gray-700 text-white"
-                                placeholder="Enter prompt..."
-                              />
-                              <div className="flex gap-1">
-                                <Button
-                                  onClick={() => handleSavePrompt(template.id)}
-                                  disabled={isSavingPrompt}
-                                  size="sm"
-                                  className="h-6 px-2 bg-blue-600 hover:bg-blue-700"
-                                >
-                                  <Save className="w-3 h-3 mr-1" />
-                                  {isSavingPrompt ? "Saving..." : "Save"}
-                                </Button>
-                                <Button
-                                  onClick={handleCancelEdit}
-                                  disabled={isSavingPrompt}
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-6 px-2 border-gray-600 text-gray-300 hover:bg-gray-800"
-                                >
-                                  <X className="w-3 h-3 mr-1" />
-                                  Cancel
-                                </Button>
+                    </div>
+
+                    {/* Category Templates Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {categoryTemplates.map((template) => (
+                        <Card key={template.id} className="bg-gray-900 border-gray-800">
+                          <CardHeader className="pb-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Checkbox
+                                  checked={selectedTemplates.includes(template.id)}
+                                  onCheckedChange={(checked) => handleTemplateSelect(template.id, checked as boolean)}
+                                />
+                                <CardTitle className="text-sm text-white truncate">
+                                  {template.file_name}
+                                </CardTitle>
                               </div>
                             </div>
-                          ) : (
-                            <p className="text-xs text-gray-300 line-clamp-2">
-                              {template.prompt}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex gap-2 pt-2">
-                        <Button
-                          onClick={() => handleToggleVisibility(template.id, template.is_visible !== false)}
-                          disabled={isUpdating === template.id || editingPrompt === template.id}
-                          size="sm"
-                          className="flex-1 bg-blue-600 hover:bg-blue-700"
-                        >
-                          {template.is_visible === false ? (
-                            <>
-                              <Eye className="w-3 h-3 mr-1" />
-                              {isUpdating === template.id ? "Updating..." : "Show"}
-                            </>
-                          ) : (
-                            <>
-                              <EyeOff className="w-3 h-3 mr-1" />
-                              {isUpdating === template.id ? "Updating..." : "Hide"}
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            <div className="relative w-full h-40 rounded-lg overflow-hidden border border-gray-700">
+                              <img
+                                src={template.url}
+                                alt={template.file_name}
+                                className="w-full h-full object-contain bg-gray-800"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <p className="text-xs text-gray-400">
+                                ID: {template.id.substring(0, 8)}...
+                              </p>
+                              <p className="text-xs text-gray-400">
+                                Created: {new Date(template.created_at).toLocaleDateString()}
+                              </p>
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <p className="text-xs text-gray-300 font-medium">Prompt:</p>
+                                  {editingPrompt !== template.id && (
+                                    <Button
+                                      onClick={() => handleEditPrompt(template.id, template.prompt)}
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 px-2 text-gray-400 hover:text-white hover:bg-gray-800"
+                                    >
+                                      <Edit3 className="w-3 h-3" />
+                                    </Button>
+                                  )}
+                                </div>
+                                {editingPrompt === template.id ? (
+                                  <div className="space-y-2">
+                                    <Textarea
+                                      value={promptValue}
+                                      onChange={(e) => setPromptValue(e.target.value)}
+                                      className="min-h-16 text-xs bg-gray-800 border-gray-700 text-white"
+                                      placeholder="Enter prompt..."
+                                    />
+                                    <div className="flex gap-1">
+                                      <Button
+                                        onClick={() => handleSavePrompt(template.id)}
+                                        disabled={isSavingPrompt}
+                                        size="sm"
+                                        className="h-6 px-2 bg-blue-600 hover:bg-blue-700"
+                                      >
+                                        <Save className="w-3 h-3 mr-1" />
+                                        {isSavingPrompt ? "Saving..." : "Save"}
+                                      </Button>
+                                      <Button
+                                        onClick={handleCancelEdit}
+                                        disabled={isSavingPrompt}
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-6 px-2 border-gray-600 text-gray-300 hover:bg-gray-800"
+                                      >
+                                        <X className="w-3 h-3 mr-1" />
+                                        Cancel
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <p className="text-xs text-gray-300 line-clamp-2">
+                                    {template.prompt}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex gap-2 pt-2">
+                              <Button
+                                onClick={() => handleToggleVisibility(template.id, template.is_visible !== false)}
+                                disabled={isUpdating === template.id || editingPrompt === template.id}
+                                size="sm"
+                                className="flex-1 bg-blue-600 hover:bg-blue-700"
+                              >
+                                {template.is_visible === false ? (
+                                  <>
+                                    <Eye className="w-3 h-3 mr-1" />
+                                    {isUpdating === template.id ? "Updating..." : "Show"}
+                                  </>
+                                ) : (
+                                  <>
+                                    <EyeOff className="w-3 h-3 mr-1" />
+                                    {isUpdating === template.id ? "Updating..." : "Hide"}
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             )}

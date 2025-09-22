@@ -1,637 +1,328 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { TemplatePicker } from "@/components/template-picker"
-import { UploadImage } from "@/components/upload-image"
-import { ResultGrid } from "@/components/result-grid"
 import { Badge } from "@/components/ui/badge"
-import { ChevronRight, Star } from "lucide-react"
-import useSWR from "swr"
-import type { TriggerResponse, Template } from "@/types"
-
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
-
-type Step = 'templates' | 'upload' | 'prompts' | 'results'
-
-const FeedbackButton = ({ 
-  onShowForm, 
-  isVisible = true 
-}: { 
-  onShowForm: () => void
-  isVisible?: boolean 
-}) => {
-  if (!isVisible) return null
-  
-  return (
-    <Button 
-      variant="outline" 
-      onClick={onShowForm}
-      className="bg-blue-600 hover:bg-blue-700 text-white"
-    >
-      Give Feedback
-    </Button>
-  )
-}
-
-const FeedbackForm = ({ onSubmit }: { onSubmit: (rating: number, feedback: string, email: string) => void }) => {
-  const [rating, setRating] = useState(0)
-  const [feedback, setFeedback] = useState('')
-  const [email, setEmail] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (rating === 0) return
-    
-    setSubmitting(true)
-    await onSubmit(rating, feedback, email)
-    setSubmitting(false)
-  }
-
-  return (
-    <Card className="bg-gray-900 border-gray-800">
-      <CardHeader>
-        <CardTitle className="text-lg text-white">Rate Your Experience</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label className="text-gray-300 mb-2 block">Rating</Label>
-            <div className="flex gap-1">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  type="button"
-                  onClick={() => setRating(star)}
-                  className="text-2xl hover:scale-110 transition-transform"
-                >
-                  <Star 
-                    className={`w-8 h-8 ${star <= rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-600'}`} 
-                  />
-                </button>
-              ))}
-            </div>
-          </div>
-          
-          <div>
-            <Label htmlFor="email" className="text-gray-300 mb-2 block">Email (optional)</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="your@email.com"
-              className="bg-gray-800 border-gray-700 text-white"
-            />
-          </div>
-          
-          <div>
-            <Label htmlFor="feedback" className="text-gray-300 mb-2 block">Feedback (optional)</Label>
-            <Textarea
-              id="feedback"
-              value={feedback}
-              onChange={(e) => setFeedback(e.target.value)}
-              placeholder="Tell us how we can improve..."
-              className="min-h-20 bg-gray-800 border-gray-700 text-white"
-            />
-          </div>
-          
-          <Button 
-            type="submit" 
-            disabled={rating === 0 || submitting}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            {submitting ? 'Submitting...' : 'Submit Feedback'}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
-  )
-}
-
-interface TemplateWithPrompt {
-  url: string
-  prompt: string
-}
+import { Card, CardContent } from "@/components/ui/card"
+import { GlowCard } from "@/components/ui/spotlight-card"
+import { Layers, Sparkles, Zap, ArrowRight, Palette, Image as ImageIcon, Film, Play, Settings } from "lucide-react"
 
 export default function HomePage() {
-  const { data, mutate } = useSWR<{ templates: Template[] }>("/api/templates/list", fetcher)
-  const templates = data?.templates || []
+  const appsRef = useRef<HTMLDivElement | null>(null)
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
+  const [scrollY, setScrollY] = useState(0)
 
-  const [currentStep, setCurrentStep] = useState<Step>('templates')
-  const [selectedTemplates, setSelectedTemplates] = useState<Template[]>([])
-  const [file, setFile] = useState<File | null>(null)
-  const [templatePrompts, setTemplatePrompts] = useState<TemplateWithPrompt[]>([])
-  const [submitting, setSubmitting] = useState(false)
-  const [resp, setResp] = useState<TriggerResponse | null>(null)
-  const [processingMessage, setProcessingMessage] = useState<string>('')
-  const [currentExecutionId, setCurrentExecutionId] = useState<string | null>(null)
-  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
-  const [showFeedbackForm, setShowFeedbackForm] = useState(false)
-  // Use environment variable for webhook URL
-  const webhookUrl = process.env.N8N_WEBHOOK_URL
-
-  const defaultPrompt = "Place the uploaded product onto each template image as a realistic ad composite. Keep aspect ratio and add soft shadow."
-
-  // Initialize prompts when templates are selected
-  const initializePrompts = (templates: Template[]) => {
-    setTemplatePrompts(templates.map(template => ({ url: template.url, prompt: template.prompt })))
-  }
-
-  const handleTemplateSelection = (templates: Template[]) => {
-    setSelectedTemplates(templates)
-    initializePrompts(templates)
-  }
-
-  const handleNext = () => {
-    if (currentStep === 'templates' && selectedTemplates.length > 0) {
-      setCurrentStep('upload')
-    } else if (currentStep === 'upload' && file) {
-      setCurrentStep('prompts')
-    }
-  }
-
-  const handleBack = () => {
-    if (currentStep === 'upload') {
-      setCurrentStep('templates')
-    } else if (currentStep === 'prompts') {
-      setCurrentStep('upload')
-    } else if (currentStep === 'results') {
-      setCurrentStep('prompts')
-    }
-  }
-
-  const handleGenerate = async () => {
-    if (!file || templatePrompts.length === 0) return
-    
-    setSubmitting(true)
-    setCurrentStep('results')
-    setResp(null)
-    setProcessingMessage('Initializing generation process...')
-    setFeedbackSubmitted(false)
-    setShowFeedbackForm(false)
-
+  const handleSelect = (source: "meta" | "youtube") => {
     try {
-      // 0) Create an execution first
-      setProcessingMessage('Creating execution record...')
-      const execRes = await fetch('/api/executions/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          templates: selectedTemplates.map(t => t.url),
-          prompts: selectedTemplates.map(t => t.prompt)
-        }),
-      })
-      const execJson = await execRes.json()
-      if (!execRes.ok || !execJson?.execution_id) {
-        throw new Error(execJson?.error || 'Failed to create execution')
-      }
-      const executionId: string = execJson.execution_id
-      setCurrentExecutionId(executionId)
+      sessionStorage.clear()
+      sessionStorage.setItem("selectedSource", source)
+      const name = source === "meta" ? "Meta Ads Studio" : "YouTube Thumbnail Lab"
+      sessionStorage.setItem("selectedSourceName", name)
+    } catch (_) {}
+    window.location.href = "/public/templates"
+  }
 
-      // 1) Upload product image
-      setProcessingMessage('Uploading product image...')
-      const form = new FormData()
-      form.append("file", file)
-      const uploadRes = await fetch(`/api/upload?execution_id=${encodeURIComponent(executionId)}`, { method: "POST", body: form })
-      const uploadJson = await uploadRes.json()
-      if (!uploadRes.ok) {
-        // Handle upload errors with more detail
-        const errorMessage = uploadJson?.error || "Upload failed"
-        if (uploadJson?.fileSize && uploadJson?.maxSize) {
-          throw new Error(`${errorMessage} (File: ${(uploadJson.fileSize / (1024 * 1024)).toFixed(1)}MB, Max: ${uploadJson.maxSize / (1024 * 1024)}MB)`)
-        }
-        throw new Error(errorMessage)
-      }
-      
-      // Show warning if using fallback
-      if (uploadJson?.warning) {
-        console.warn("Upload warning:", uploadJson.warning)
-      }
-      
-      const userImageUrl: string = uploadJson.url
+  const scrollToApps = () => {
+    appsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
 
-      // 2) Trigger n8n webhook with templates and prompts array
-      setProcessingMessage('Processing templates with AI...')
-      const triggerRes = await fetch("/api/trigger", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          templates: templatePrompts, // Array of {url, prompt}
-          userImageUrl,
-          webhookUrl: webhookUrl,
-          execution_id: executionId,
-        }),
-      })
-      const triggerJson = await triggerRes.json()
+  const [showAppsHeading, setShowAppsHeading] = useState(false)
 
-      // 3) Upload results to Supabase
-      setProcessingMessage('Saving results...')
-      if (triggerRes.ok && triggerJson) {
-        try {
-          const resultsUploadRes = await fetch("/api/results/upload", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              results: triggerJson,
-              metadata: {
-                templates: selectedTemplates,
-                userImageUrl,
-                templatePrompts,
-                timestamp: new Date().toISOString(),
-                execution_id: executionId,
-              },
-            }),
-          })
-
-          if (resultsUploadRes.ok) {
-            const uploadData = await resultsUploadRes.json()
-            console.log(`Uploaded ${uploadData.count} results to Supabase`)
-          }
-        } catch (uploadErr) {
-          console.error("Failed to upload results to Supabase:", uploadErr)
-        }
-      }
-
-      // Check if we have valid results
-      if (!triggerRes.ok) {
-        throw new Error(triggerJson?.error || "n8n webhook returned error")
-      }
-
-      // Check for empty or invalid response
-      if (!triggerJson || (typeof triggerJson === 'object' && Object.keys(triggerJson).length === 0)) {
-        throw new Error("No results generated. Please try again.")
-      }
-
-      // Check if raw field is empty but we have execution_id
-      if (triggerJson.raw === "" && triggerJson.execution_id) {
-        throw new Error("Generation completed but no images were produced. Please check your prompts and try again.")
-      }
-
-      setResp({
-        ok: true,
-        data: triggerJson,
-        error: undefined,
-      })
-    } catch (err: any) {
-      setResp({ 
-        ok: false, 
-        error: err?.message || "Something went wrong during generation" 
-      })
-    } finally {
-      setSubmitting(false)
-      setProcessingMessage('')
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      setMousePosition({ x: e.clientX, y: e.clientY })
     }
-  }
 
-  const updateTemplatePrompt = (url: string, prompt: string) => {
-    setTemplatePrompts(prev => 
-      prev.map(tp => tp.url === url ? { ...tp, prompt } : tp)
-    )
-  }
+    const handleScroll = () => {
+      setScrollY(window.scrollY)
+    }
 
-  const handleFeedbackSubmit = async (rating: number, feedback: string, email: string) => {
-    if (!currentExecutionId) return
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('scroll', handleScroll)
     
-    try {
-      await fetch('/api/feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ execution_id: currentExecutionId, rating, feedback, email })
-      })
-      setFeedbackSubmitted(true)
-      setShowFeedbackForm(false)
-    } catch (error) {
-      console.error('Failed to submit feedback:', error)
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('scroll', handleScroll)
     }
-  }
+  }, [])
 
-  // Helper to determine if feedback should be shown
-  const shouldShowFeedback = !feedbackSubmitted && !!currentExecutionId && !submitting
+  useEffect(() => {
+    const el = appsRef.current
+    if (!el) return
+    const io = new IntersectionObserver(([entry]) => {
+      setShowAppsHeading(entry.isIntersecting)
+    }, { threshold: 0.1 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      {/* Header */}
-      <header className="bg-gray-900 border-b border-gray-800">
+    <div className="min-h-screen bg-black text-white relative overflow-hidden">
+      {/* Subtle Background Elements */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl"></div>
+        <div className="absolute top-1/3 right-1/4 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl"></div>
+        <div className="absolute bottom-1/3 left-1/3 w-28 h-28 bg-pink-500/10 rounded-full blur-2xl"></div>
+      </div>
+      {/* Full Width Header */}
+      <header 
+        className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
+        style={{
+          backgroundColor: scrollY > 50 ? 'rgba(17, 24, 39, 0.9)' : 'transparent',
+          backdropFilter: scrollY > 50 ? 'blur(10px)' : 'none',
+          borderBottom: scrollY > 50 ? '1px solid rgba(55, 65, 81, 0.5)' : 'none',
+        }}
+      >
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold">AdCraft</h1>
-          <div className="flex items-center gap-4">
-            {currentStep === 'templates' && selectedTemplates.length > 0 && (
-              <Button 
-                onClick={handleNext} 
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                Upload Product
-                <ChevronRight className="w-4 h-4 ml-2" />
-              </Button>
-            )}
-            {currentStep === 'upload' && (
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={handleBack} className="border-gray-600 text-gray-300 hover:bg-gray-800 bg-black">
-                  Back
-                </Button>
-                {file && (
-                  <Button onClick={handleNext} className="bg-blue-600 hover:bg-blue-700">
-                    Modify Prompts
-                  </Button>
-                )}
-              </div>
-            )}
-            {currentStep === 'prompts' && (
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={handleBack} className="border-gray-600 text-gray-300 hover:bg-gray-800 bg-black">
-                  Back
-                </Button>
-                <Button 
-                  onClick={handleGenerate} 
-                  disabled={submitting}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  {submitting ? "Generating..." : "Generate Ads"}
-                </Button>
-              </div>
-            )}
-            {currentStep === 'results' && (
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  onClick={handleBack} 
-                  disabled={submitting}
-                  className="border-gray-600 text-gray-300 hover:bg-gray-800 bg-black disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Back
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    setCurrentStep('templates')
-                    setSelectedTemplates([])
-                    setFile(null)
-                    setTemplatePrompts([])
-                    setResp(null)
-                    setCurrentExecutionId(null)
-                    setFeedbackSubmitted(false)
-                    setShowFeedbackForm(false)
-                  }}
-                  disabled={submitting}
-                  className="border-gray-600 text-gray-300 hover:bg-gray-800 bg-black disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Home
-                </Button>
-              </div>
-            )}
+          {/* App Name */}
+          <h1 className="text-3xl md:text-4xl font-bold text-white">
+            Adcraft
+          </h1>
 
-          </div>
+          {/* Admin Button */}
+          <Button 
+            variant="ghost" 
+            size="default"
+            className="text-white hover:bg-white/10 border-0 bg-transparent text-base px-4 py-2"
+            onClick={() => window.location.href = '/admin'}
+          >
+            <Settings className="w-5 h-5 mr-2" />
+            Admin
+          </Button>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-6 py-8">
-        {/* Step 1: Template Selection */}
-        {currentStep === 'templates' && (
-          <div className="space-y-6">
-            <div className="text-center">
-              <h2 className="text-3xl font-semibold mb-2 text-white">Select Templates</h2>
-              <p className="text-gray-300">Choose the ad templates you want to use</p>
-            </div>
-            
-            <TemplatePicker 
-              templates={templates} 
-              selected={selectedTemplates} 
-              onChange={handleTemplateSelection} 
-            />
-            
-            {selectedTemplates.length > 0 && (
-              <div className="text-center">
-                <Badge variant="secondary" className="text-lg px-4 py-2">
-                  {selectedTemplates.length} template{selectedTemplates.length !== 1 ? 's' : ''} selected
-                </Badge>
-              </div>
-            )}
+      {/* Hero */}
+      <section className="relative w-full h-screen flex flex-col items-center justify-center text-center px-6">
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl"></div>
+          <div className="absolute top-1/3 right-1/4 w-48 h-48 bg-purple-500/15 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-1/3 left-1/3 w-56 h-56 bg-pink-500/10 rounded-full blur-3xl"></div>
+        </div>
+
+        <div className="z-10 flex flex-col items-center max-w-4xl mx-auto mb-24 relative">
+          <h2 className="text-4xl md:text-6xl font-bold tracking-tight mb-8 relative">
+            <span className="relative z-10">Transform Ideas into</span>
+            <br />
+            <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent relative z-10">
+              Viral Content
+            </span>
+          </h2>
+          
+          <p className="text-white/80 text-lg md:text-xl mb-10 max-w-3xl relative z-10 font-normal leading-relaxed">
+            Create high-converting ads, thumbnails, and movie posters by combining your content with proven successful designs using AI.
+          </p>
+          
+          <Button 
+            size="lg" 
+            className="px-10 py-5 text-lg bg-blue-600 hover:bg-blue-700 text-white border-0 transition-all duration-300 hover:scale-105 relative z-10 shadow-lg"
+            onClick={scrollToApps}
+          >
+            <Play className="mr-3 w-6 h-6" />
+            Start Creating
+          </Button>
+        </div>
+
+        {/* Animated Image Marquee */}
+        <div className="absolute bottom-0 left-0 w-full h-1/3 md:h-2/5 overflow-hidden">
+          <div className="flex gap-6 animate-[marquee_40s_linear_infinite] will-change-transform">
+            {[
+              "https://images.unsplash.com/photo-1611224923853-80b023f02d71?q=80&w=1000&auto=format&fit=crop",
+              "https://images.unsplash.com/photo-1634942537034-2531766767d1?q=80&w=1000&auto=format&fit=crop",
+              "https://images.unsplash.com/photo-1626785774573-4b799315345d?q=80&w=1000&auto=format&fit=crop",
+              "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1000&auto=format&fit=crop",
+              "https://images.unsplash.com/photo-1611224923853-80b023f02d71?q=80&w=1000&auto=format&fit=crop",
+              "https://images.unsplash.com/photo-1634942537034-2531766767d1?q=80&w=1000&auto=format&fit=crop",
+              "https://images.unsplash.com/photo-1626785774573-4b799315345d?q=80&w=1000&auto=format&fit=crop",
+              "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1000&auto=format&fit=crop",
+              "https://images.unsplash.com/photo-1611224923853-80b023f02d71?q=80&w=1000&auto=format&fit=crop",
+              "https://images.unsplash.com/photo-1634942537034-2531766767d1?q=80&w=1000&auto=format&fit=crop",
+              "https://images.unsplash.com/photo-1626785774573-4b799315345d?q=80&w=1000&auto=format&fit=crop",
+              "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1000&auto=format&fit=crop",
+            ].map((src, i) => {
+              const rotation = i % 2 === 0 ? "rotate-[-2deg]" : "rotate-[5deg]"
+              return (
+                <div key={i} className={cn("relative flex-shrink-0 aspect-[3/4] h-56 md:h-80 rounded-2xl shadow-xl overflow-hidden", rotation)}>
+                  <img src={src} alt={`Creative ad ${i + 1}`} className="w-full h-full object-cover" />
+                </div>
+              )
+            })}
           </div>
-        )}
+        </div>
+      </section>
 
-        {/* Step 2: Product Upload */}
-        {currentStep === 'upload' && (
-          <div className="space-y-6">
-            <div className="text-center">
-              <h2 className="text-3xl font-semibold mb-2 text-white">Add Product Image</h2>
-              <p className="text-gray-300">Upload the product image you want to feature in your ads</p>
-            </div>
-            
-            <Card className="max-w-2xl mx-auto bg-gray-900 border-gray-800">
-              <CardHeader>
-                <CardTitle className="text-lg text-white">Upload your product image</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <UploadImage file={file} onChange={setFile} />
-              </CardContent>
-            </Card>
-            
+      {/* Transition Section */}
+      <section className="relative h-20 bg-gradient-to-b from-transparent via-black/50 to-black"></section>
 
+      {/* App Cards */}
+      <section ref={appsRef} className="py-20 bg-black relative overflow-hidden">
+        {/* Subtle Background Elements for App Cards */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-1/6 left-1/12 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute top-1/5 right-1/12 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-1/6 left-1/8 w-64 h-64 bg-pink-500/10 rounded-full blur-3xl"></div>
+        </div>
+        
+        <div className="container mx-auto px-6 relative z-10">
+          <div className={cn("text-center mb-16 transition-all duration-300", showAppsHeading ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4")}> 
+            <h3 className="text-4xl md:text-5xl font-bold tracking-tight mb-6 text-white">
+              Choose Your Creative Tool
+            </h3>
           </div>
-        )}
 
-        {/* Step 3: Prompts */}
-        {currentStep === 'prompts' && (
-          <div className="space-y-6">
-            <div className="text-center">
-              <h2 className="text-3xl font-semibold mb-2 text-white">Customize Prompts</h2>
-              <p className="text-gray-300">Set specific instructions for each template</p>
-            </div>
-            
-            <div className="grid gap-6 max-w-4xl mx-auto">
-              {templatePrompts.map((template, index) => (
-                <Card key={template.url} className="bg-gray-900 border-gray-800">
-                  <CardHeader>
-                    <CardTitle className="text-lg text-white">Template {index + 1}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex gap-4">
-                      <div className="w-32 h-32 rounded-lg overflow-hidden border border-gray-700">
-                        <img 
-                          src={template.url} 
-                          alt={`Template ${index + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <Label htmlFor={`prompt-${index}`} className="text-gray-300 mb-2 block">Instructions for this template</Label>
-                        <Textarea
-                          id={`prompt-${index}`}
-                          value={template.prompt}
-                          onChange={(e) => updateTemplatePrompt(template.url, e.target.value)}
-                          placeholder="Describe how the ad should look for this template..."
-                          className="min-h-24 bg-gray-900 border-gray-700 text-white"
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-            
-
-          </div>
-        )}
-
-        {/* Step 4: Results */}
-        {currentStep === 'results' && (
-          <div className="space-y-6">
-            <div className="text-center">
-              <h2 className="text-3xl font-semibold mb-2 text-white">Generated Ads</h2>
-              <p className="text-gray-300">Your AI-generated advertisements</p>
-            </div>
-            
-            {/* Processing Message */}
-            {submitting && processingMessage && (
-              <div className="text-center py-8">
-                <div className="inline-flex items-center gap-3 bg-blue-900 border border-blue-700 rounded-lg px-6 py-4">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
-                  <span className="text-white font-medium">{processingMessage}</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          {/* Smart Ad Creator (Meta) */}
+          <div className="group cursor-pointer transition-transform duration-300 hover:-translate-y-2">
+            <GlowCard glowColor="purple" customSize={true} className="w-full h-auto p-6">
+              <div className="flex items-start gap-4 mb-4">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg">
+                  <Palette className="w-8 h-8" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-2xl font-bold mb-2 text-white">Smart Ad Creator</h3>
+                  <p className="text-white/70 leading-relaxed">Generate compelling advertisements by combining your product with proven successful ad templates</p>
                 </div>
               </div>
-            )}
-            
-            {/* Results or Error */}
-            {!submitting && resp && (
-              <>
-                {!resp.ok ? (
-                  <div className="max-w-2xl mx-auto">
-                    <Card className="bg-gray-900 border-gray-800">
-                      <CardHeader>
-                        <CardTitle className="text-lg text-white flex items-center gap-2">
-                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                          </svg>
-                          Generation Error
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="bg-red-800 rounded-lg p-4">
-                          <h3 className="text-white font-medium mb-2">Something went wrong</h3>
-                          <p className="text-red-200 text-sm">
-                            The app encountered an error while generating your ads. Please report this issue to <a href="mailto:vp991058@gmail.com" className="text-red-300 underline hover:text-red-200">vp991058@gmail.com</a> and we'll help you resolve it.
-                          </p>
-                        </div>
-
-                        <div className="flex gap-3 pt-2">
-                          <Button 
-                            onClick={() => setCurrentStep('prompts')}
-                            className="bg-blue-600 hover:bg-blue-700"
-                          >
-                            Try Again
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            onClick={() => {
-                              setCurrentStep('templates')
-                              setSelectedTemplates([])
-                              setFile(null)
-                              setTemplatePrompts([])
-                              setResp(null)
-                              setCurrentExecutionId(null)
-                              setFeedbackSubmitted(false)
-                              setShowFeedbackForm(false)
-                            }}
-                            className="border-gray-600 text-gray-300 hover:bg-gray-800 bg-black"
-                          >
-                            Start Over
-                          </Button>
-                          <FeedbackButton 
-                            onShowForm={() => setShowFeedbackForm(true)}
-                            isVisible={shouldShowFeedback}
-                          />
-                        </div>
-                      </CardContent>
-                    </Card>
-                    
-                    {showFeedbackForm && !feedbackSubmitted && currentExecutionId && (
-                      <div className="mt-6">
-                        <FeedbackForm onSubmit={handleFeedbackSubmit} />
-                      </div>
-                    )}
-                    
-                    {feedbackSubmitted && (
-                      <div className="mt-6">
-                        <Card className="bg-gray-900 border-gray-800">
-                          <CardContent className="text-center py-6">
-                            <p className="text-green-400">Thank you for your feedback!</p>
-                          </CardContent>
-                        </Card>
-                      </div>
-                    )}
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-semibold mb-3 flex items-center gap-2 text-white"><Layers className="w-4 h-4" /> Key Features</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {['AI-powered layouts','A/B testing ready','Brand consistency','Multi-platform formats'].map((f,i)=> (
+                      <div key={i} className="flex items-center gap-2 text-sm text-white/80"><div className="w-1.5 h-1.5 bg-blue-400 rounded-full" /> {f}</div>
+                    ))}
                   </div>
-                ) : (
-                  <>
-                    <Card className="bg-gray-900 border-gray-800">
-                      <CardHeader>
-                        <CardTitle className="text-lg text-white">Results</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <ResultGrid payload={resp.data} />
-                      </CardContent>
-                    </Card>
-                    
-                    <div className="flex gap-3 justify-center pt-4">
-                      <Button 
-                        onClick={() => setCurrentStep('prompts')}
-                        className="bg-blue-600 hover:bg-blue-700"
-                      >
-                        Try Again
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        onClick={() => {
-                          setCurrentStep('templates')
-                          setSelectedTemplates([])
-                          setFile(null)
-                          setTemplatePrompts([])
-                          setResp(null)
-                          setCurrentExecutionId(null)
-                          setFeedbackSubmitted(false)
-                          setShowFeedbackForm(false)
-                        }}
-                        className="border-gray-600 text-gray-300 hover:bg-gray-800 bg-black"
-                      >
-                        Start Over
-                      </Button>
-                      <FeedbackButton 
-                        onShowForm={() => setShowFeedbackForm(true)}
-                        isVisible={shouldShowFeedback}
-                      />
-                    </div>
-                    
-                    {showFeedbackForm && !feedbackSubmitted && currentExecutionId && (
-                      <div className="mt-6">
-                        <FeedbackForm onSubmit={handleFeedbackSubmit} />
-                      </div>
-                    )}
-                    
-                    {feedbackSubmitted && (
-                      <div className="mt-6">
-                        <Card className="bg-gray-900 border-gray-800">
-                          <CardContent className="text-center py-6">
-                            <p className="text-green-400">Thank you for your feedback!</p>
-                          </CardContent>
-                        </Card>
-                      </div>
-                    )}
-                  </>
-                )}
-              </>
-            )}
-            
-
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-3 text-white">Perfect For</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {['Social media ads','Display banners','Video thumbnails'].map((t,i)=>(
+                      <Badge key={i} variant="outline" className="text-xs border-white/30 text-white/80">{t}</Badge>
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-4 pt-4 border-t border-white/20">
+                  <Button 
+                    className="w-full bg-purple-600 hover:bg-purple-700 text-white border-0 transition-all duration-300 hover:scale-105"
+                    onClick={() => handleSelect('meta')}
+                  >
+                    Launch Smart Ad Creator
+                    <ArrowRight className="ml-2 w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </GlowCard>
           </div>
-        )}
-      </main>
+
+          {/* Thumbnail Generator (YouTube) */}
+          <div className="group cursor-pointer transition-transform duration-300 hover:-translate-y-2">
+            <GlowCard glowColor="blue" customSize={true} className="w-full h-auto p-6">
+              <div className="flex items-start gap-4 mb-4">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 text-white shadow-lg">
+                  <ImageIcon className="w-8 h-8" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-2xl font-bold mb-2 text-white">Thumbnail Generator</h3>
+                  <p className="text-white/70 leading-relaxed">Create eye-catching thumbnails that boost click-through rates using successful design patterns</p>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-semibold mb-3 flex items-center gap-2 text-white"><Layers className="w-4 h-4" /> Key Features</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {['Click-optimized designs','Text overlay AI','Emotion analysis','Platform optimization'].map((f,i)=> (
+                      <div key={i} className="flex items-center gap-2 text-sm text-white/80"><div className="w-1.5 h-1.5 bg-blue-400 rounded-full" /> {f}</div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-3 text-white">Perfect For</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {['YouTube thumbnails','Blog headers','Course covers'].map((t,i)=>(
+                      <Badge key={i} variant="outline" className="text-xs border-white/30 text-white/80">{t}</Badge>
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-4 pt-4 border-t border-white/20">
+                  <Button 
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white border-0 transition-all duration-300 hover:scale-105"
+                    onClick={() => handleSelect('youtube')}
+                  >
+                    Launch Thumbnail Generator
+                    <ArrowRight className="ml-2 w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </GlowCard>
+          </div>
+
+          {/* Movie Poster Studio (coming soon) */}
+          <div className="group cursor-pointer transition-transform duration-300 hover:-translate-y-2">
+            <GlowCard glowColor="orange" customSize={true} className="w-full h-auto p-6">
+              <div className="flex items-start gap-4 mb-4">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 text-white shadow-lg">
+                  <Film className="w-8 h-8" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-2xl font-bold mb-2 text-white">Movie Poster Studio</h3>
+                  <p className="text-white/70 leading-relaxed">Design cinematic posters by merging your content with blockbuster movie poster aesthetics</p>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-semibold mb-3 flex items-center gap-2 text-white"><Layers className="w-4 h-4" /> Key Features</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {['Cinematic templates','Typography mastery','Color grading','Genre styles'].map((f,i)=> (
+                      <div key={i} className="flex items-center gap-2 text-sm text-white/80"><div className="w-1.5 h-1.5 bg-blue-400 rounded-full" /> {f}</div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-3 text-white">Perfect For</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {['Movie posters','Event promos','Book covers'].map((t,i)=>(
+                      <Badge key={i} variant="outline" className="text-xs border-white/30 text-white/80">{t}</Badge>
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-4 pt-4 border-t border-white/20">
+                  <Button 
+                    disabled
+                    className="w-full bg-gray-400 text-gray-600 cursor-not-allowed border-0"
+                  >
+                    Coming Soon
+                  </Button>
+                </div>
+              </div>
+            </GlowCard>
+          </div>
+        </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-white/10 bg-gray-900/50">
+        <div className="container mx-auto px-6 py-4 text-sm flex flex-col md:flex-row items-center justify-between gap-3 text-white/60">
+          <div>© {new Date().getFullYear()} AdCraft. All rights reserved.</div>
+          <div>
+            Credits: Templates, UI and assets belong to their respective owners.
+          </div>
+        </div>
+      </footer>
+
+      {/* Floating Creative Elements */}
+      <div className="fixed top-20 left-20 w-4 h-4 bg-blue-400/30 rounded-full blur-sm animate-pulse pointer-events-none" />
+      <div className="fixed bottom-32 right-32 w-6 h-6 bg-purple-400/30 rounded-full blur-sm animate-bounce pointer-events-none" />
+      <div className="fixed top-1/2 right-20 w-3 h-3 bg-pink-400/30 rounded-full blur-sm animate-pulse pointer-events-none" />
+
+      {/* Mouse follower gradient */}
+      <div
+        className="fixed pointer-events-none w-96 h-96 rounded-full blur-3xl opacity-10 bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 z-0 transition-transform duration-300 ease-out"
+        style={{
+          left: mousePosition.x - 192,
+          top: mousePosition.y - 192,
+        }}
+      />
     </div>
   )
 }

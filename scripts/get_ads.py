@@ -28,45 +28,71 @@ ADS_WORKSHEET_TITLE = "ads"
 BRAND_NAME_FIELD = "Brand"
 PAGE_ID_FIELD = "Page_id"
 BRAND_CATEGORY_FIELD = "Category"
-BRAND_START_ROW = 1  # 1-based row index (including header row)
+BRAND_START_ROW = 2  # 1-based row index (including header row)
 MAX_BRAND_ROWS: Optional[int] = None  # Set to None to process all rows
 
 # Meta Graph API
 GRAPH_API_VERSION = "v23.0"
 API_BASE_URL = f"https://graph.facebook.com/{GRAPH_API_VERSION}/ads_archive"
-ACCESS_TOKEN_ENV_VAR = "EAAKoCQFjfqQBPqoCWsqFIpqiZCqByKQp6iapRBpJT93vZAxu0XRul6wZBle2YJVFWIsD6qrpCfdBlVuxZCYj9ROlLOJBYhv6630F9yGBeefhgCg5gRzO5KL4KF7Xh94EJZA0dypZC0Hse8a9All9ZBsibyaGBIG69hs1NaxUezgGLxyoIEiEom8dkiNqLBpORfZA8QzfZAA4iZCleH3lAtBA5OEnRbd1cMFhhmZCufOyb4HxZA2BZBZBsV"
-ACCESS_TOKEN_DEFAULT = "EAAKoCQFjfqQBPqoCWsqFIpqiZCqByKQp6iapRBpJT93vZAxu0XRul6wZBle2YJVFWIsD6qrpCfdBlVuxZCYj9ROlLOJBYhv6630F9yGBeefhgCg5gRzO5KL4KF7Xh94EJZA0dypZC0Hse8a9All9ZBsibyaGBIG69hs1NaxUezgGLxyoIEiEom8dkiNqLBpORfZA8QzfZAA4iZCleH3lAtBA5OEnRbd1cMFhhmZCufOyb4HxZA2BZBZBsV"  # Optional hard-coded fallback if env var is absent
+ACCESS_TOKEN_ENV_VAR = "EAAKoCQFjfqQBPuzaPFgMymwZBMZBtsn9khelZBYggLNDNrZCZCzzWcBKqJ2GfE98HH0Ru9nmiZAqWzZC164Yf9vPno9n1Xy8lcEyX5w3SLqjTjsBUPbyUG8sCaHzZBo2ltbQ9jLg8bEi25l9bepcgPWqJZCVEzwdSG2qts76hTZC8UbszKwB2InOOSAvbG6v5uHZCnH5DknDXha8B1RxIZBkoypTG99Txn0dZBNyKTY0uJvf5V3ZCKL2RB"
+ACCESS_TOKEN_DEFAULT = "EAAKoCQFjfqQBPuzaPFgMymwZBMZBtsn9khelZBYggLNDNrZCZCzzWcBKqJ2GfE98HH0Ru9nmiZAqWzZC164Yf9vPno9n1Xy8lcEyX5w3SLqjTjsBUPbyUG8sCaHzZBo2ltbQ9jLg8bEi25l9bepcgPWqJZCVEzwdSG2qts76hTZC8UbszKwB2InOOSAvbG6v5uHZCnH5DknDXha8B1RxIZBkoypTG99Txn0dZBNyKTY0uJvf5V3ZCKL2RB"  # Optional hard-coded fallback if env var is absent
 COUNTRY_CODES = [
-    "AT",
-    "BE",
-    "BG",
-    "HR",
-    "CY",
-    "CZ",
-    "DK",
-    "EE",
-    "FI",
-    "FR",
-    "DE",
-    "GR",
-    "HU",
-    "IE",
-    "IT",
-    "LV",
-    "LT",
-    "LU",
-    "MT",
-    "NL",
-    "PL",
-    "PT",
-    "RO",
-    "SK",
-    "SI",
-    "ES",
-    "SE",
-    "GB",
-    "BR"
+    "AT",  # Austria
+    "BE",  # Belgium
+    "BG",  # Bulgaria
+    "HR",  # Croatia
+    "CY",  # Cyprus
+    "CZ",  # Czech Republic
+    "DK",  # Denmark
+    "EE",  # Estonia
+    "FI",  # Finland
+    "FR",  # France
+    "DE",  # Germany
+    "GR",  # Greece
+    "HU",  # Hungary
+    "IE",  # Ireland
+    "IT",  # Italy
+    "LV",  # Latvia
+    "LT",  # Lithuania
+    "LU",  # Luxembourg
+    "MT",  # Malta
+    "NL",  # Netherlands
+    "PL",  # Poland
+    "PT",  # Portugal
+    "RO",  # Romania
+    "SK",  # Slovakia
+    "SI",  # Slovenia
+    "ES",  # Spain
+    "SE",  # Sweden
+    "GB",  # United Kingdom
+    "BR",  # Brazil
+    # Added USA and other major industrial/developed countries:
+    "US",  # United States
+    "CA",  # Canada
+    "JP",  # Japan
+    "AU",  # Australia
+    "NZ",  # New Zealand
+    "CH",  # Switzerland
+    "NO",  # Norway
+    "IS",  # Iceland
+    "KR",  # South Korea
+    "SG",  # Singapore
+    "IL",  # Israel
+    "CN",  # China
+    "IN",  # India
+    "MX",  # Mexico
+    "AR",  # Argentina
+    "ZA",  # South Africa
+    "RU",  # Russia
+    "SA",  # Saudi Arabia
+    "ID",  # Indonesia
+    "TR",  # Turkey
+    "TH",  # Thailand
+    "MY",  # Malaysia
+    "CL",  # Chile
+    "AE",  # United Arab Emirates
 ]
+
 REQUEST_FIELDS = [
     "id",
     "page_name",

@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { TemplatePicker } from "@/components/template-picker"
-import { ChevronRight, RotateCcw } from "lucide-react"
+import { ChevronRight, RotateCcw, ArrowUpDown } from "lucide-react"
 import useSWR from "swr"
 import type { Template } from "@/types"
 
@@ -18,6 +19,8 @@ export default function TemplatesPage() {
   const [source, setSource] = useState<"meta" | "youtube">("meta")
   const [sourceName, setSourceName] = useState<string>("Meta Ads Studio")
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+  const [sortBy, setSortBy] = useState<"none" | "n_countries" | "reach">("none")
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
 
   useEffect(() => {
     // Check if we're navigating from another page
@@ -99,6 +102,29 @@ export default function TemplatesPage() {
     ? sourceFiltered
     : sourceFiltered.filter(t => selectedCategories.includes(((t as any).category as string) || ""))
 
+  // Sort templates based on selected criteria
+  const sortedTemplates = useMemo(() => {
+    if (sortBy === "none") return categoryFiltered
+
+    return [...categoryFiltered].sort((a, b) => {
+      let aVal: number = 0
+      let bVal: number = 0
+
+      switch (sortBy) {
+        case "n_countries":
+          aVal = a.n_countries || 0
+          bVal = b.n_countries || 0
+          break
+        case "reach":
+          aVal = a.reach || 0
+          bVal = b.reach || 0
+          break
+      }
+
+      return sortOrder === "asc" ? aVal - bVal : bVal - aVal
+    })
+  }, [categoryFiltered, sortBy, sortOrder])
+
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Header */}
@@ -143,8 +169,8 @@ export default function TemplatesPage() {
             <Badge
               variant={selectedCategories.length === 0 ? 'default' : 'outline'}
               className={`cursor-pointer transition-all duration-200 hover:scale-105 px-4 py-2 text-sm ${
-                selectedCategories.length === 0 
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                selectedCategories.length === 0
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
                   : 'border-gray-600 text-gray-300 hover:bg-gray-800 bg-transparent'
               }`}
               onClick={() => setSelectedCategories([])}
@@ -157,8 +183,8 @@ export default function TemplatesPage() {
                   key={cat}
                   variant={selectedCategories.includes(cat) ? 'default' : 'outline'}
                   className={`cursor-pointer transition-all duration-200 hover:scale-105 px-4 py-2 text-sm ${
-                    selectedCategories.includes(cat) 
-                      ? 'bg-purple-600 hover:bg-purple-700 text-white' 
+                    selectedCategories.includes(cat)
+                      ? 'bg-purple-600 hover:bg-purple-700 text-white'
                       : 'border-gray-600 text-gray-300 hover:bg-gray-800 bg-transparent'
                   }`}
                   onClick={() => toggleCategory(cat)}
@@ -172,11 +198,40 @@ export default function TemplatesPage() {
               </Badge>
             )}
           </div>
+
+          {/* Sort Controls */}
+          <div className="flex items-center justify-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <ArrowUpDown className="w-4 h-4 text-gray-400" />
+              <span className="text-sm text-gray-300">Sort by:</span>
+            </div>
+            <Select value={sortBy} onValueChange={(value: "none" | "n_countries" | "reach") => setSortBy(value)}>
+              <SelectTrigger className="w-40 bg-gray-800 border-gray-600 text-white">
+                <SelectValue placeholder="Choose field" />
+              </SelectTrigger>
+              <SelectContent className="bg-gray-800 border-gray-600">
+                <SelectItem value="none" className="text-white hover:bg-gray-700">Default</SelectItem>
+                <SelectItem value="n_countries" className="text-white hover:bg-gray-700">Countries</SelectItem>
+                <SelectItem value="reach" className="text-white hover:bg-gray-700">Reach</SelectItem>
+              </SelectContent>
+            </Select>
+            {sortBy !== "none" && (
+              <Select value={sortOrder} onValueChange={(value: "asc" | "desc") => setSortOrder(value)}>
+                <SelectTrigger className="w-32 bg-gray-800 border-gray-600 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-800 border-gray-600">
+                  <SelectItem value="desc" className="text-white hover:bg-gray-700">High to Low</SelectItem>
+                  <SelectItem value="asc" className="text-white hover:bg-gray-700">Low to High</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          </div>
           
-          <TemplatePicker 
-            templates={categoryFiltered} 
-            selected={selectedTemplates} 
-            onChange={handleTemplateSelection} 
+          <TemplatePicker
+            templates={sortedTemplates}
+            selected={selectedTemplates}
+            onChange={handleTemplateSelection}
           />
           
           {selectedTemplates.length > 0 && (
