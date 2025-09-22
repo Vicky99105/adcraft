@@ -132,3 +132,20 @@
     overflow: hidden;
   }
 }
+
+/* Landing page marquee */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* Fun clip-path shapes for hero thumbnails */
+.clip-hex {
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+}
+.clip-ticket {
+  clip-path: polygon(8% 0%, 92% 0%, 100% 14%, 100% 86%, 92% 100%, 8% 100%, 0% 86%, 0% 14%);
+}
+.clip-tacky {
+  clip-path: polygon(10% 0%, 90% 0%, 100% 25%, 95% 75%, 80% 100%, 20% 100%, 5% 75%, 0% 25%);
+}

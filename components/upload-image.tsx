@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useRef } from "react"
 import Image from "next/image"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,21 +14,46 @@ const RECOMMENDED_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 export function UploadImage({
   file,
   onChange,
+  previewUrl,
 }: {
   file: File | null
   onChange: (file: File | null) => void
+  previewUrl?: string | null
 }) {
-  const [preview, setPreview] = useState<string | null>(null)
+  const [preview, setPreview] = useState<string | null>(previewUrl || null)
   const [fileError, setFileError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Single source of truth for preview - always derive from previewUrl prop or file
   useEffect(() => {
-    if (!file) {
-      setPreview(null)
+    if (previewUrl) {
+      setPreview(previewUrl)
       setFileError(null)
       return
     }
 
-    // Validate file size
+    if (file) {
+      // Create blob URL for new files
+      const url = URL.createObjectURL(file)
+      setPreview(url)
+      setFileError(null)
+      
+      // Cleanup function
+      return () => URL.revokeObjectURL(url)
+    }
+
+    // No file and no preview URL - clear everything
+    setPreview(null)
+    setFileError(null)
+  }, [file, previewUrl])
+
+  // File validation
+  useEffect(() => {
+    if (!file) {
+      setFileError(null)
+      return
+    }
+
     if (file.size > MAX_FILE_SIZE) {
       setFileError(`File too large. Maximum size is ${MAX_FILE_SIZE / (1024 * 1024)}MB. Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB.`)
       onChange(null)
@@ -40,10 +65,6 @@ export function UploadImage({
     } else {
       setFileError(null)
     }
-
-    const url = URL.createObjectURL(file)
-    setPreview(url)
-    return () => URL.revokeObjectURL(url)
   }, [file, onChange])
 
   const helper = useMemo(() => "PNG, JPG, or WebP up to 2MB. We'll upload it to Supabase Storage and pass a URL to your n8n workflow.", [])
@@ -59,6 +80,7 @@ export function UploadImage({
         <Label htmlFor="upload" className="text-gray-300">Your product image</Label>
         <div className="relative">
           <Input
+            ref={fileInputRef}
             id="upload"
             type="file"
             accept="image/png,image/jpeg,image/webp"

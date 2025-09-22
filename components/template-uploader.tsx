@@ -6,10 +6,13 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
 
 interface FileWithPrompt {
   file: File
   prompt: string
+  category?: string
 }
 
 export default function TemplateUploader() {
@@ -17,6 +20,7 @@ export default function TemplateUploader() {
   const [filePrompts, setFilePrompts] = useState<FileWithPrompt[]>([])
   const [isUploading, setUploading] = useState(false)
   const [showPromptEditor, setShowPromptEditor] = useState(false)
+  const [source, setSource] = useState<"meta" | "youtube">("meta")
 
   const defaultPrompt = "Place the uploaded product onto this template image as a realistic ad composite. Keep aspect ratio and add soft shadow."
 
@@ -30,7 +34,8 @@ export default function TemplateUploader() {
     if (fileList) {
       const newFilePrompts: FileWithPrompt[] = Array.from(fileList).map(file => ({
         file,
-        prompt: defaultPrompt
+        prompt: defaultPrompt,
+        category: ""
       }))
       setFilePrompts(newFilePrompts)
       setShowPromptEditor(true)
@@ -51,7 +56,9 @@ export default function TemplateUploader() {
       filePrompts.forEach((fp) => {
         fd.append("files", fp.file)
         fd.append("prompts", fp.prompt)
+        fd.append("categories", fp.category || "")
       })
+      fd.append("source", source)
       
       const res = await fetch("/api/templates/upload", { method: "POST", body: fd })
       const json = await res.json()
@@ -86,6 +93,18 @@ export default function TemplateUploader() {
         <p className="text-sm text-gray-300 mb-3">
           Select template images to upload. You'll be able to customize prompts for each template.
         </p>
+        <div className="mb-4">
+          <Label className="text-gray-300 mb-2 block">Template Source</Label>
+          <Select value={source} onValueChange={(v) => setSource(v as any)}>
+            <SelectTrigger className="w-64 bg-gray-900 border-gray-700 text-white">
+              <SelectValue placeholder="Select source" />
+            </SelectTrigger>
+            <SelectContent className="bg-gray-900 border-gray-800 text-white">
+              <SelectItem value="meta">Meta Ads Studio</SelectItem>
+              <SelectItem value="youtube">YouTube Thumbnail Lab</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div className="flex gap-2 items-center">
           <div className="relative">
             <input
@@ -127,15 +146,27 @@ export default function TemplateUploader() {
                         className="w-full h-full object-cover"
                       />
                     </div>
-                    <div className="flex-1">
-                      <Label htmlFor={`prompt-${index}`} className="text-gray-300 mb-2 block">Instructions for this template</Label>
-                      <Textarea
-                        id={`prompt-${index}`}
-                        value={filePrompt.prompt}
-                        onChange={(e) => updatePrompt(index, e.target.value)}
-                        placeholder="Describe how the ad should look for this template..."
-                                                  className="min-h-24 bg-gray-900 border-gray-700 text-white"
-                      />
+                    <div className="flex-1 space-y-3">
+                      <div>
+                        <Label htmlFor={`prompt-${index}`} className="text-gray-300 mb-2 block">Instructions for this template</Label>
+                        <Textarea
+                          id={`prompt-${index}`}
+                          value={filePrompt.prompt}
+                          onChange={(e) => updatePrompt(index, e.target.value)}
+                          placeholder="Describe how the ad should look for this template..."
+                          className="min-h-24 bg-gray-900 border-gray-700 text-white"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor={`category-${index}`} className="text-gray-300 mb-2 block">Category (for filtering)</Label>
+                        <Input
+                          id={`category-${index}`}
+                          value={filePrompt.category || ""}
+                          onChange={(e) => setFilePrompts(prev => prev.map((fp, i) => i === index ? { ...fp, category: e.target.value } : fp))}
+                          placeholder="e.g. Sale, Lifestyle, Tech, Beauty"
+                          className="bg-gray-900 border-gray-700 text-white"
+                        />
+                      </div>
                     </div>
                   </div>
                 </CardContent>

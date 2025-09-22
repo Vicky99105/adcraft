@@ -11,4 +11,7 @@ export interface Template {
   prompt: string
   created_at: string
   is_visible?: boolean
+  // Optional metadata for filtering
+  source?: "meta" | "youtube" | string
+  category?: string
 }

@@ -78,17 +78,29 @@ export async function POST(req: NextRequest) {
       ...(executionId ? { execution_id: executionId } : {}),
     }
 
+    // Create AbortController for timeout
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 300000) // 5 minutes timeout
+
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+      signal: controller.signal,
     })
 
+    clearTimeout(timeoutId)
+
     const text = await res.text()
+    
     let json: any
     try {
       json = JSON.parse(text)
-    } catch {
+      console.log('✅ Response parsed successfully as JSON')
+      
+    } catch (parseError) {
+      console.error('❌ Failed to parse n8n webhook response:', parseError)
+      console.log('Raw response text (first 1000 chars):', text.substring(0, 1000))
       json = { raw: text }
     }
 
@@ -114,6 +126,22 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ...json, execution_id: executionId })
   } catch (err: any) {
+    // Handle timeout specifically
+    if (err.name === 'AbortError') {
+      return NextResponse.json(
+        { error: "Request timeout - n8n webhook took too long to respond" },
+        { status: 504 }
+      )
+    }
+    
+    // Handle other fetch errors
+    if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND') {
+      return NextResponse.json(
+        { error: "Cannot connect to n8n webhook" },
+        { status: 503 }
+      )
+    }
+
     return NextResponse.json({ error: err?.message || "Trigger failed" }, { status: 500 })
   }
 }

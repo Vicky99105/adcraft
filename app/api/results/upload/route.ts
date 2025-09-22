@@ -109,19 +109,20 @@ export async function POST(request: Request) {
 		}
 
 		// Optional metadata passthrough (best-effort)
-		const metadata = body?.metadata
-		if (metadata && uploadedResults.length > 0) {
-			const { error: metadataError } = await supabase
-				.from("results_metadata")
-				.insert({
-					result_urls: uploadedResults,
-					metadata,
-					created_at: new Date().toISOString(),
-				})
-			if (metadataError) {
-				console.error("Metadata storage error:", metadataError)
-			}
-		}
+		// Note: results_metadata table doesn't exist, so we'll skip this for now
+		// const metadata = body?.metadata
+		// if (metadata && uploadedResults.length > 0) {
+		// 	const { error: metadataError } = await supabase
+		// 		.from("results_metadata")
+		// 		.insert({
+		// 			result_urls: uploadedResults,
+		// 			metadata,
+		// 			created_at: new Date().toISOString(),
+		// 		})
+		// 	if (metadataError) {
+		// 		console.error("Metadata storage error:", metadataError)
+		// 	}
+		// }
 
 		return NextResponse.json({ uploaded: uploadedResults, count: uploadedResults.length }, { status: 201 })
 	} catch (err: any) {

@@ -60,7 +60,7 @@ export function TemplatePicker({
           className="group rounded-lg border-2 border-dashed border-gray-700 bg-gray-900 hover:bg-gray-800 transition-colors cursor-pointer"
           onClick={handleAddTemplate}
         >
-          <div className="relative aspect-square overflow-hidden rounded-t-lg flex items-center justify-center">
+          <div className="relative aspect-[4/5] overflow-hidden rounded-t-lg flex items-center justify-center">
             <div className="text-center">
               <Plus className="w-12 h-12 text-gray-400 mx-auto mb-2" />
               <p className="text-sm text-gray-400">Add Template</p>
@@ -77,7 +77,7 @@ export function TemplatePicker({
               className="group rounded-lg border border-gray-700 bg-gray-900 hover:bg-gray-800 transition-colors relative cursor-pointer"
               onClick={() => toggle(template)}
             >
-              <div className="relative aspect-square overflow-hidden rounded-t-lg">
+              <div className="relative aspect-[4/5] overflow-hidden rounded-t-lg">
                 <Image
                   src={template.url || "/placeholder.svg?height=400&width=400&query=ad%20template%20thumbnail"}
                   alt={`Template ${idx + 1}`}

@@ -6,6 +6,8 @@ export async function POST(request: Request) {
     const form = await request.formData()
     const files = form.getAll("files") as File[]
     const prompts = form.getAll("prompts") as string[]
+    const categories = form.getAll("categories") as string[]
+    const source = (form.get("source") as string | null) || null
 
     if (!files || files.length === 0) {
       return NextResponse.json({ error: "No files provided" }, { status: 400 })
@@ -44,13 +46,25 @@ export async function POST(request: Request) {
 
       uploaded.push(urlData.publicUrl)
 
-      // Log in DB
-      const { data: dbData } = await supabase.from('templates').insert({ 
-        url: urlData.publicUrl, 
+      // Attempt extended insert with optional fields, fallback if columns don't exist
+      const cat = (categories && categories[i]) ? String(categories[i]) : null
+      const baseRow: any = {
+        url: urlData.publicUrl,
         file_name: fileName,
         prompt: prompt,
-        is_visible: true
-      }).select('id')
+        is_visible: true,
+      }
+      const extendedRow: any = { ...baseRow }
+      if (source) extendedRow.source = source
+      if (cat) extendedRow.category = cat
+
+      let insertError: any = null
+      let dbRes = await supabase.from('templates').insert(extendedRow).select('id')
+      insertError = dbRes.error
+      if (insertError) {
+        console.warn('Extended insert failed, retrying with base fields:', insertError?.message)
+        await supabase.from('templates').insert(baseRow).select('id')
+      }
     }
 
     // Log summary only
