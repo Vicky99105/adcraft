@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { TemplatePicker } from "@/components/template-picker"
-import { ChevronRight, RotateCcw, ArrowUpDown } from "lucide-react"
+import { ChevronRight, RotateCcw, ArrowUpDown, Home } from "lucide-react"
 import useSWR from "swr"
 import type { Template } from "@/types"
 
@@ -72,6 +72,11 @@ export default function TemplatesPage() {
     sessionStorage.removeItem('selectedTemplates')
   }
 
+  const handleHome = () => {
+    sessionStorage.clear()
+    window.location.href = '/'
+  }
+
   const toggleCategory = (cat: string) => {
     setSelectedCategories(prev => {
       const exists = prev.includes(cat)
@@ -132,9 +137,17 @@ export default function TemplatesPage() {
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">AdCraft</h1>
           <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              onClick={handleHome}
+              className="border-gray-600 text-gray-300 hover:bg-gray-800 bg-black"
+            >
+              <Home className="w-4 h-4 mr-2" />
+              Home
+            </Button>
             {selectedTemplates.length > 0 && (
-              <Button 
-                onClick={handleNext} 
+              <Button
+                onClick={handleNext}
                 className="bg-blue-600 hover:bg-blue-700"
               >
                 Upload Product
@@ -142,8 +155,8 @@ export default function TemplatesPage() {
               </Button>
             )}
             {selectedTemplates.length > 0 && (
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={handleResetSelection}
                 className="border-gray-600 text-gray-300 hover:bg-gray-800 bg-black"
               >
@@ -151,7 +164,6 @@ export default function TemplatesPage() {
                 Reset
               </Button>
             )}
-            {/* Home button removed */}
           </div>
         </div>
       </header>
