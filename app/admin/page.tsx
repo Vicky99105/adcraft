@@ -12,7 +12,7 @@ export default function AdminPage() {
       <header className="bg-gray-900 border-b border-gray-800">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-bold">AdCraft</h1>
+            <h1 className="text-3xl md:text-4xl font-bold leading-none text-white">AdCraft</h1>
             <Badge variant="secondary" className="bg-green-600 text-white">
               <Upload className="w-3 h-3 mr-1" />
               Template Upload

@@ -131,12 +131,116 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
+
+  /* Subtle noise texture background (1-2%) */
+  .noise-bg {
+    background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.04) 1px, transparent 0);
+    background-size: 12px 12px;
+    mix-blend-mode: normal;
+  }
+
+  .next-step-hint {
+    position: relative;
+    isolation: isolate;
+    overflow: visible;
+  }
+
+  .next-step-hint::after {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+    inset: -0.28rem;
+    z-index: -1;
+    border-radius: inherit;
+    border: 2px solid transparent;
+    background: conic-gradient(from 130deg, rgba(96, 165, 250, 0.1), rgba(191, 219, 254, 0.9), rgba(96, 165, 250, 0.1)) border-box;
+    background-size: 220% 220%;
+    box-shadow: 0 0 18px rgba(96, 165, 250, 0.25);
+    animation: next-step-border-flow 2.8s linear infinite;
+    -webkit-mask:
+      linear-gradient(#000 0 0) padding-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) padding-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    opacity: 0.95;
+  }
+
+  /* Reduced motion preference */
+  @media (prefers-reduced-motion: reduce) {
+    .hero-marquee { animation: none !important; }
+    * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+    .next-step-hint::after {
+      animation: none !important;
+    }
+  }
 }
 
 /* Landing page marquee */
-@keyframes marquee {
+@keyframes hero-marquee {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
+}
+
+@keyframes next-step-border-flow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+
+.hero-marquee {
+  --marquee-duration: 45s;
+  --marquee-gap: 1.5rem;
+  display: flex;
+  gap: var(--marquee-gap);
+  min-width: 100%;
+  width: max-content;
+  will-change: transform;
+  animation: hero-marquee var(--marquee-duration) linear infinite;
+  height: 100%;
+  padding-top: 0.85rem;
+}
+
+.hero-marquee:hover {
+  animation-play-state: paused;
+}
+
+
+.hero-marquee__card {
+  flex: 0 0 auto;
+  height: 100%;
+  position: relative;
+  transition: transform 300ms ease;
+  border-radius: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.12);
+  box-shadow: none;
+}
+
+
+.hero-marquee__card[data-border-style="glow"] {
+  border-color: rgba(96, 165, 250, 0.38);
+  background: rgba(15, 23, 42, 0.12);
+  box-shadow: none;
+}
+
+.hero-marquee__card[data-border-style="glow"]::before {
+  content: none;
+}
+
+.hero-marquee__card[data-border-style="luminous"] {
+  border-color: rgba(96, 165, 250, 0.3);
+  background: rgba(15, 23, 42, 0.12);
+  box-shadow: none;
+}
+
+.hero-marquee__card[data-border-style="contrast"] {
+  border-color: rgba(30, 41, 59, 0.6);
+  background: rgba(15, 23, 42, 0.12);
+  box-shadow: none;
 }
 
 /* Fun clip-path shapes for hero thumbnails */

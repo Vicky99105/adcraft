@@ -17,7 +17,7 @@ interface N8nResponse {
 }
 
 // Updated component to handle individual result success statuses
-export function ResultGrid({ payload }: { payload: any }) {
+export function ResultGrid({ response }: { response: any }) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   const handleImageClick = (url: string, e: React.MouseEvent) => {
@@ -87,9 +87,16 @@ export function ResultGrid({ payload }: { payload: any }) {
     }
   }
 
-  // Handle n8n response format
-  const n8nResponse = payload as N8nResponse
-  const results = n8nResponse.results || []
+  // Handle n8n response format (support nested .data wrappers)
+  const payload = response && typeof response === 'object' && 'data' in response
+    ? (response as { data: unknown }).data
+    : response
+
+  const results = Array.isArray((payload as any)?.results)
+    ? ((payload as any).results as ResultItem[])
+    : Array.isArray(payload)
+      ? (payload as ResultItem[])
+      : []
   
   if (results.length === 0) {
     return (
@@ -155,7 +162,7 @@ function ResultCard({
   onDownload: (url: string, adNumber: number) => void
   onCopy: (url: string) => void
 }) {
-  const { success, generatedImageUrl, instructions, error } = result
+  const { success = true, generatedImageUrl, instructions, error } = result
 
   return (
     <div className="rounded-lg border border-gray-700 overflow-hidden bg-gray-900 flex flex-col h-[320px]">
@@ -238,4 +245,3 @@ function ResultCard({
     </div>
   )
 }
-
