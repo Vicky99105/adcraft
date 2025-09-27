@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic"
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { templates, userImageUrl, prompt, webhookUrl } = body || {}
+    const { templates, userImageUrl, prompt, webhookUrl, src } = body || {}
 
     // Handle both old format (array of URLs) and new format (array of {url, prompt})
     let templateUrls: string[] = []
@@ -75,6 +75,7 @@ export async function POST(req: NextRequest) {
       userImage: userImageUrl,
       templates: templateUrls,
       prompts: templatePrompts,
+      ...(src ? { src } : {}),
       ...(executionId ? { execution_id: executionId } : {}),
     }
 

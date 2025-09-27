@@ -8,7 +8,7 @@ export async function GET(request: Request) {
     
     // Try selecting with extended columns; fallback if they don't exist
     const baseSelect = 'id, url, file_name, prompt, created_at, is_visible'
-    const extendedSelect = baseSelect + ', src, category, n_countries, brand, reach'
+    const extendedSelect = baseSelect + ', src, category, n_countries, brand, reach, views'
 
     async function runQuery(select: string) {
       let q = supabase

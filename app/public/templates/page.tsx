@@ -15,11 +15,13 @@ export default function TemplatesPage() {
   const { data } = useSWR<{ templates: Template[] }>("/api/templates/list", fetcher)
   const templates = data?.templates || []
 
+  type SortField = "none" | "n_countries" | "reach" | "views"
+
   const [selectedTemplates, setSelectedTemplates] = useState<Template[]>([])
   const [source, setSource] = useState<"meta" | "youtube">("meta")
   const [sourceName, setSourceName] = useState<string>("Meta Ads Studio")
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
-  const [sortBy, setSortBy] = useState<"none" | "n_countries" | "reach">("none")
+  const [sortBy, setSortBy] = useState<SortField>("none")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
 
   useEffect(() => {
@@ -88,32 +90,50 @@ export default function TemplatesPage() {
 
   // First filter by source (src field from database)
   const sourceFiltered = templates.filter(t => {
-    const tSrc = (t as any).src as string | undefined
-    // Treat missing src as 'meta' for backward compatibility
-    const effective = tSrc || 'Meta'
-    // Convert both to lowercase for case-insensitive comparison
-    return effective.toLowerCase() === source.toLowerCase()
+    const templateSource = (t.src || t.source || (t as any).src || "meta").toString().toLowerCase()
+    return templateSource === source.toLowerCase()
   })
 
   // Get categories from the source-filtered templates
-  const categories = Array.from(new Set(
-    sourceFiltered
-      .map(t => (t as any).category as string | undefined)
-      .filter((v): v is string => !!v)
-  ))
+  const categories = useMemo(() => (
+    Array.from(new Set(
+      sourceFiltered
+        .map(t => t.category)
+        .filter((v): v is string => !!v)
+    )).sort((a, b) => a.localeCompare(b))
+  ), [sourceFiltered])
 
   // Then filter by selected categories
   const categoryFiltered = selectedCategories.length === 0
     ? sourceFiltered
-    : sourceFiltered.filter(t => selectedCategories.includes(((t as any).category as string) || ""))
+    : sourceFiltered.filter(t => selectedCategories.includes(t.category || ""))
 
   // Sort templates based on selected criteria
+  useEffect(() => {
+    if (source === "youtube") {
+      setSortBy("views")
+      setSortOrder(prev => (prev === "desc" ? prev : "desc"))
+    } else {
+      setSortBy(prev => (prev === "views" ? "none" : prev))
+    }
+  }, [source])
+
   const sortedTemplates = useMemo(() => {
+    const isYoutube = source === "youtube"
+
+    if (isYoutube) {
+      return [...categoryFiltered].sort((a, b) => {
+        const aViews = typeof a.views === "number" ? a.views : 0
+        const bViews = typeof b.views === "number" ? b.views : 0
+        return sortOrder === "asc" ? aViews - bViews : bViews - aViews
+      })
+    }
+
     if (sortBy === "none") return categoryFiltered
 
     return [...categoryFiltered].sort((a, b) => {
-      let aVal: number = 0
-      let bVal: number = 0
+      let aVal = 0
+      let bVal = 0
 
       switch (sortBy) {
         case "n_countries":
@@ -128,7 +148,18 @@ export default function TemplatesPage() {
 
       return sortOrder === "asc" ? aVal - bVal : bVal - aVal
     })
-  }, [categoryFiltered, sortBy, sortOrder])
+  }, [categoryFiltered, sortBy, sortOrder, source])
+
+  const sortOptions: { value: SortField; label: string }[] = useMemo(() => {
+    if (source === "youtube") {
+      return [{ value: "views", label: "View Count" }]
+    }
+    return [
+      { value: "none", label: "Default" },
+      { value: "n_countries", label: "Countries" },
+      { value: "reach", label: "Reach" },
+    ]
+  }, [source])
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -217,14 +248,16 @@ export default function TemplatesPage() {
               <ArrowUpDown className="w-4 h-4 text-gray-400" />
               <span className="text-sm text-gray-300">Sort by:</span>
             </div>
-            <Select value={sortBy} onValueChange={(value: "none" | "n_countries" | "reach") => setSortBy(value)}>
-              <SelectTrigger className="w-40 bg-gray-800 border-gray-600 text-white">
+            <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortField)}>
+              <SelectTrigger disabled={source === "youtube"} className="w-40 bg-gray-800 border-gray-600 text-white disabled:opacity-70">
                 <SelectValue placeholder="Choose field" />
               </SelectTrigger>
               <SelectContent className="bg-gray-800 border-gray-600">
-                <SelectItem value="none" className="text-white hover:bg-gray-700">Default</SelectItem>
-                <SelectItem value="n_countries" className="text-white hover:bg-gray-700">Countries</SelectItem>
-                <SelectItem value="reach" className="text-white hover:bg-gray-700">Reach</SelectItem>
+                {sortOptions.map(option => (
+                  <SelectItem key={option.value} value={option.value} className="text-white hover:bg-gray-700">
+                    {option.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             {sortBy !== "none" && (

@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     const file = formData.get('file') as File
     const sessionId = formData.get('sessionId') as string
-    const executionId = formData.get('executionId') as string
+    const executionId = formData.get('executionId') as string | null
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
@@ -14,10 +14,6 @@ export async function POST(request: NextRequest) {
 
     if (!sessionId) {
       return NextResponse.json({ error: 'No session ID provided' }, { status: 400 })
-    }
-
-    if (!executionId) {
-      return NextResponse.json({ error: 'No execution ID provided' }, { status: 400 })
     }
 
     // Validate file size (10MB limit)
@@ -39,8 +35,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate unique filename
-    const fileExt = file.name.split('.').pop()
-    const fileName = `${sessionId}_${Date.now()}.${fileExt}`
+    const rawExt = file.name.includes('.') ? file.name.split('.').pop() : ''
+    const derivedExt = file.type?.split('/')[1]?.split(';')[0]
+    const safeExt = rawExt && rawExt.trim() ? rawExt : (derivedExt || 'png')
+    const fileName = `${sessionId}_${Date.now()}.${safeExt}`
     const filePath = `uploads/${fileName}`
 
     // Convert file to buffer
@@ -72,7 +70,7 @@ export async function POST(request: NextRequest) {
       .insert({
         url: urlData.publicUrl,
         file_name: fileName,
-        execution_id: executionId,
+        execution_id: executionId || null,
         created_at: new Date().toISOString()
       })
       .select()

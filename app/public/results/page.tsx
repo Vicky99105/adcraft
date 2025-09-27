@@ -14,6 +14,19 @@ interface TemplateWithPrompt {
   prompt: string
 }
 
+const sanitizeFilePayload = (payload: any) => {
+  if (!payload || typeof payload !== 'object') {
+    return null
+  }
+
+  const { base64Data, previewUrl, ...rest } = payload
+
+  return {
+    ...rest,
+    uploaded: rest?.uploaded ?? Boolean(rest?.url),
+  }
+}
+
 const FeedbackButton = ({ 
   onShowForm, 
   isVisible = true 
@@ -118,12 +131,18 @@ export default function ResultsPage() {
   const [currentExecutionId, setCurrentExecutionId] = useState<string | null>(null)
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
   const [showFeedbackForm, setShowFeedbackForm] = useState(false)
+  const [selectedSource, setSelectedSource] = useState<"meta" | "youtube" | null>(null)
 
   useEffect(() => {
     // Load data from sessionStorage
     const storedTemplates = sessionStorage.getItem('selectedTemplates')
     const storedPrompts = sessionStorage.getItem('templatePrompts')
     const storedFileData = sessionStorage.getItem('fileData')
+    const storedSource = sessionStorage.getItem('selectedSource')
+
+    if (storedSource === 'meta' || storedSource === 'youtube') {
+      setSelectedSource(storedSource)
+    }
     
     if (storedTemplates) {
       try {
@@ -146,7 +165,13 @@ export default function ResultsPage() {
 
     if (storedFileData) {
       try {
-        setFileData(JSON.parse(storedFileData))
+        const parsed = JSON.parse(storedFileData)
+        const sanitized = sanitizeFilePayload(parsed)
+
+        if (sanitized) {
+          setFileData(sanitized)
+          sessionStorage.setItem('fileData', JSON.stringify(sanitized))
+        }
       } catch (error) {
         console.error('Error parsing stored file data:', error)
         window.location.href = '/public/upload'
@@ -163,6 +188,12 @@ export default function ResultsPage() {
         console.log(storedResults)
         setResp(results)
         // Extract execution ID from results for feedback
+        const sourceFromResponse = results?.data?.src || results?.src
+        if ((sourceFromResponse === 'meta' || sourceFromResponse === 'youtube') && !storedSource) {
+          setSelectedSource(sourceFromResponse)
+          sessionStorage.setItem('selectedSource', sourceFromResponse)
+        }
+
         if (results?.data?.execution_id) {
           setCurrentExecutionId(results.data.execution_id)
         }

@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Trash2, Eye, EyeOff, Settings, Lock, Edit3, Save, X } from "lucide-react"
 import useSWR from "swr"
 import type { Template } from "@/types"
@@ -34,6 +35,8 @@ export default function SecureAdminPage() {
   const [editingPrompt, setEditingPrompt] = useState<string | null>(null)
   const [promptValue, setPromptValue] = useState("")
   const [isSavingPrompt, setIsSavingPrompt] = useState(false)
+  const [sourceFilter, setSourceFilter] = useState<string>("all")
+  const [categoryFilter, setCategoryFilter] = useState<string>("all")
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -54,10 +57,11 @@ export default function SecureAdminPage() {
   }
 
   const handleSelectAll = (checked: boolean) => {
+    const filteredIds = filteredTemplates.map(t => t.id)
     if (checked) {
-      setSelectedTemplates(templates.map(t => t.id))
+      setSelectedTemplates(prev => [...new Set([...prev, ...filteredIds])])
     } else {
-      setSelectedTemplates([])
+      setSelectedTemplates(prev => prev.filter(id => !filteredIds.includes(id)))
     }
   }
 
@@ -161,9 +165,61 @@ export default function SecureAdminPage() {
     }
   }
 
-  // Group templates by category
-  const categoryGroups = templates.reduce((acc, template) => {
-    const category = (template as any).category || 'Uncategorized'
+  const deriveSource = (template: Template) => {
+    const rawSource = (template.source || (template as any).src || "").toLowerCase()
+    if (rawSource.includes("meta") || rawSource.includes("facebook")) return "meta"
+    if (rawSource === "yt" || rawSource.includes("youtube")) return "youtube"
+    return rawSource || "unknown"
+  }
+
+  const deriveCategory = (template: Template) => {
+    const category = (template as any).category ?? template.category
+    if (!category || typeof category !== "string" || category.trim() === "") {
+      return "Uncategorized"
+    }
+    return category.trim()
+  }
+
+  const formatSourceLabel = (value: string) => {
+    if (value === "meta") return "Meta Ads Studio"
+    if (value === "youtube") return "YouTube Thumbnail Lab"
+    if (value === "unknown") return "Unspecified"
+    return value.charAt(0).toUpperCase() + value.slice(1)
+  }
+
+  const sourceOptionsSet = new Set<string>(["meta", "youtube"])
+  templates.forEach((template) => {
+    const derived = deriveSource(template)
+    if (derived) {
+      sourceOptionsSet.add(derived)
+    }
+  })
+
+  const sourceOptions = Array.from(sourceOptionsSet).filter(Boolean).sort((a, b) => {
+    const order: Record<string, number> = { meta: 0, youtube: 1, unknown: 2 }
+    const aOrder = order[a] ?? 99
+    const bOrder = order[b] ?? 99
+    if (aOrder === bOrder) return a.localeCompare(b)
+    return aOrder - bOrder
+  })
+  const categoryOptions = Array.from(new Set(templates.map(deriveCategory))).filter(Boolean).sort((a, b) => a.localeCompare(b))
+
+  const filteredTemplates = templates.filter((template) => {
+    const normalizedSource = deriveSource(template)
+    const normalizedCategory = deriveCategory(template)
+    const matchesSource = sourceFilter === "all" || normalizedSource === sourceFilter
+    const matchesCategory = categoryFilter === "all" || normalizedCategory === categoryFilter
+    return matchesSource && matchesCategory
+  })
+
+  const selectedFilteredTemplates = filteredTemplates.filter((template) => selectedTemplates.includes(template.id))
+  const filteredVisibleCount = filteredTemplates.filter((template) => template.is_visible !== false).length
+  const overallVisibleCount = templates.filter((template) => template.is_visible !== false).length
+  const isFilterActive = sourceFilter !== "all" || categoryFilter !== "all"
+
+  // Group templates by category after applying filters
+  const categoryGroups = filteredTemplates.reduce((acc, template) => {
+    const category = deriveCategory(template)
     if (!acc[category]) {
       acc[category] = {
         templates: [],
@@ -269,21 +325,80 @@ export default function SecureAdminPage() {
             <p className="text-gray-300">Manage template visibility and delete templates</p>
             <div className="flex justify-center gap-4 mt-4 flex-wrap">
               <Badge variant="outline" className="border-blue-600 text-blue-400">
-                {templates.length} Total Templates
+                {isFilterActive ? `${filteredTemplates.length}/${templates.length} Filtered` : `${templates.length} Total Templates`}
               </Badge>
               <Badge variant="outline" className="border-green-600 text-green-400">
-                {templates.filter(t => t.is_visible !== false).length} Visible
+                {isFilterActive
+                  ? filteredTemplates.length > 0
+                    ? `${filteredVisibleCount}/${filteredTemplates.length} Visible (filtered)`
+                    : "0 Visible (filtered)"
+                  : `${overallVisibleCount} Visible`}
               </Badge>
-              {Object.keys(categoryGroups).length > 1 && (
+              {(Object.keys(categoryGroups).length > 0) && (isFilterActive || Object.keys(categoryGroups).length > 1) && (
                 <Badge variant="outline" className="border-purple-600 text-purple-400">
-                  {Object.keys(categoryGroups).length} Categories
+                  {Object.keys(categoryGroups).length} {isFilterActive ? "Filtered Categories" : "Categories"}
                 </Badge>
               )}
             </div>
           </div>
           
+          <Card className="bg-gray-900 border-gray-800">
+            <CardHeader>
+              <CardTitle className="text-lg text-white">Filters</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Source</Label>
+                  <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                    <SelectTrigger className="bg-gray-900 border-gray-700 text-white">
+                      <SelectValue placeholder="All sources" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-900 border-gray-800 text-white">
+                      <SelectItem value="all">All sources</SelectItem>
+                      {sourceOptions.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {formatSourceLabel(option)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Category</Label>
+                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                    <SelectTrigger className="bg-gray-900 border-gray-700 text-white">
+                      <SelectValue placeholder="All categories" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-900 border-gray-800 text-white">
+                      <SelectItem value="all">All categories</SelectItem>
+                      {categoryOptions.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-end md:justify-end">
+                  <Button
+                    variant="outline"
+                    className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                    disabled={!isFilterActive}
+                    onClick={() => {
+                      setSourceFilter("all")
+                      setCategoryFilter("all")
+                    }}
+                  >
+                    Reset filters
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Bulk Actions */}
-          {templates.length > 0 && (
+          {filteredTemplates.length > 0 && (
             <Card className="bg-gray-900 border-gray-800">
               <CardHeader>
                 <CardTitle className="text-lg text-white flex items-center justify-between">
@@ -291,11 +406,11 @@ export default function SecureAdminPage() {
                   <div className="flex items-center gap-2">
                     <Checkbox
                       id="select-all"
-                      checked={selectedTemplates.length === templates.length}
-                      onCheckedChange={handleSelectAll}
+                      checked={filteredTemplates.length > 0 && selectedFilteredTemplates.length === filteredTemplates.length}
+                      onCheckedChange={(checked) => handleSelectAll(Boolean(checked))}
                     />
                     <label htmlFor="select-all" className="text-sm text-gray-300">
-                      Select All ({selectedTemplates.length}/{templates.length})
+                      Select All ({selectedFilteredTemplates.length}/{filteredTemplates.length})
                     </label>
                   </div>
                 </CardTitle>
@@ -324,10 +439,12 @@ export default function SecureAdminPage() {
           
           {/* Templates by Category */}
           <div className="mt-8">
-            {templates.length === 0 ? (
+            {filteredTemplates.length === 0 ? (
               <Card className="bg-gray-900 border-gray-800">
                 <CardContent className="text-center py-8">
-                  <p className="text-gray-400">No templates found.</p>
+                  <p className="text-gray-400">
+                    {isFilterActive ? "No templates match the current filters." : "No templates found."}
+                  </p>
                 </CardContent>
               </Card>
             ) : (

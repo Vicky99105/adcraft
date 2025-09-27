@@ -13,32 +13,111 @@ interface TemplateWithPrompt {
   prompt: string
 }
 
+const sanitizeFilePayload = (payload: any) => {
+  if (!payload || typeof payload !== 'object') {
+    return null
+  }
+
+  const { base64Data, previewUrl, ...rest } = payload
+
+  const sanitized = {
+    ...rest,
+    uploaded: rest?.uploaded ?? Boolean(rest?.url),
+  }
+
+  return sanitized
+}
+
+const mergePromptsWithTemplates = (
+  templates: Template[],
+  stored: TemplateWithPrompt[] | null,
+  defaultPrompt: string
+): TemplateWithPrompt[] => {
+  if (!templates || templates.length === 0) {
+    return []
+  }
+
+  const promptMap = new Map<string, string>(
+    (stored || [])
+      .filter((item): item is TemplateWithPrompt => {
+        return !!item && typeof item.url === 'string'
+      })
+      .map((item) => [item.url, typeof item.prompt === 'string' ? item.prompt : ''])
+  )
+
+  return templates.map((template) => {
+    if (promptMap.has(template.url)) {
+      return {
+        url: template.url,
+        prompt: promptMap.get(template.url) ?? '',
+      }
+    }
+
+    return {
+      url: template.url,
+      prompt: template.prompt || defaultPrompt,
+    }
+  })
+}
+
 
 export default function PromptsPage() {
   const [selectedTemplates, setSelectedTemplates] = useState<Template[]>([])
   const [templatePrompts, setTemplatePrompts] = useState<TemplateWithPrompt[]>([])
   const [fileData, setFileData] = useState<any>(null)
+  const [legacyBase64Data, setLegacyBase64Data] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [processingMessage, setProcessingMessage] = useState<string>('')
+  const [selectedSource, setSelectedSource] = useState<"meta" | "youtube">("meta")
 
   const defaultPrompt = "Place the uploaded product onto each template image as a realistic ad composite. Keep aspect ratio and add soft shadow."
 
-  // Helper function to replace base64 images with Supabase URLs
   const replaceBase64WithUrls = (response: any, uploadedUrls: string[]): any => {
-    if (!response || !uploadedUrls || uploadedUrls.length === 0) {
+    if (!response) {
       return response
     }
+
+    const isDataImageString = (value: unknown): value is string => {
+      return typeof value === 'string' && value.startsWith('data:image')
+    }
+
+    const uploads = Array.isArray(uploadedUrls) ? uploadedUrls : []
+    const usedIndexes = new Set<number>()
+
+    const replacementFor = (() => {
+      let urlIndex = 0
+      return () => {
+        while (urlIndex < uploads.length && usedIndexes.has(urlIndex)) {
+          urlIndex += 1
+        }
+
+        if (urlIndex >= uploads.length) {
+          return null
+        }
+
+        const nextUrl = uploads[urlIndex]
+        usedIndexes.add(urlIndex)
+        urlIndex += 1
+        return nextUrl
+      }
+    })()
 
     // Handle the specific n8n response structure
     if (response.results && Array.isArray(response.results)) {
       const processedResults = response.results.map((result: any, index: number) => {
-        if (result.generatedImageUrl && 
-            typeof result.generatedImageUrl === 'string' && 
-            result.generatedImageUrl.startsWith('data:image') &&
-            index < uploadedUrls.length) {
+        if (isDataImageString(result.generatedImageUrl)) {
+          if (index < uploads.length) {
+            usedIndexes.add(index)
+            return {
+              ...result,
+              generatedImageUrl: uploads[index]
+            }
+          }
+
+          const fallbackUrl = replacementFor()
           return {
             ...result,
-            generatedImageUrl: uploadedUrls[index]
+            generatedImageUrl: fallbackUrl || null
           }
         }
         return result
@@ -51,8 +130,6 @@ export default function PromptsPage() {
     }
     
     // Fallback: generic replacement for other structures
-    let urlIndex = 0
-    
     const replaceInObject = (obj: any): any => {
       if (obj === null || obj === undefined) {
         return obj
@@ -65,14 +142,9 @@ export default function PromptsPage() {
       if (typeof obj === 'object') {
         const newObj: any = {}
         for (const [key, value] of Object.entries(obj)) {
-          if (key === 'generatedImageUrl' && typeof value === 'string' && value.startsWith('data:image')) {
-            // Replace base64 image with Supabase URL
-            if (urlIndex < uploadedUrls.length) {
-              newObj[key] = uploadedUrls[urlIndex]
-              urlIndex++
-            } else {
-              newObj[key] = value // Keep original if no more URLs
-            }
+          if (isDataImageString(value)) {
+            const nextUrl = replacementFor()
+            newObj[key] = nextUrl || null
           } else {
             newObj[key] = replaceInObject(value)
           }
@@ -98,20 +170,29 @@ export default function PromptsPage() {
     const storedTemplates = sessionStorage.getItem('selectedTemplates')
     const storedPrompts = sessionStorage.getItem('templatePrompts')
     const storedFileData = sessionStorage.getItem('fileData')
+    const storedSource = sessionStorage.getItem('selectedSource')
+
+    if (storedSource === 'meta' || storedSource === 'youtube') {
+      setSelectedSource(storedSource)
+    }
 
     if (storedTemplates) {
       try {
         const templates = JSON.parse(storedTemplates)
         setSelectedTemplates(templates)
-        
+
+        let parsedPrompts: TemplateWithPrompt[] | null = null
         if (storedPrompts) {
-          setTemplatePrompts(JSON.parse(storedPrompts))
-        } else {
-          setTemplatePrompts(templates.map((template: Template) => ({ 
-            url: template.url, 
-            prompt: template.prompt || defaultPrompt 
-          })))
+          try {
+            parsedPrompts = JSON.parse(storedPrompts)
+          } catch (promptError) {
+            console.error('Error parsing stored prompts:', promptError)
+          }
         }
+
+        const initialPrompts = mergePromptsWithTemplates(templates, parsedPrompts, defaultPrompt)
+        setTemplatePrompts(initialPrompts)
+        sessionStorage.setItem('templatePrompts', JSON.stringify(initialPrompts))
       } catch (error) {
         console.error('Error parsing stored templates:', error)
         window.location.href = '/public/templates'
@@ -123,7 +204,24 @@ export default function PromptsPage() {
 
     if (storedFileData) {
       try {
-        setFileData(JSON.parse(storedFileData))
+        const parsed = JSON.parse(storedFileData)
+
+        if (parsed?.base64Data) {
+          setLegacyBase64Data(parsed.base64Data)
+        }
+
+        const sanitized = sanitizeFilePayload(parsed)
+
+        if (!sanitized) {
+          console.warn('Stored file data invalid, redirecting to upload.')
+          window.location.href = '/public/upload'
+          return
+        }
+
+        setFileData(sanitized)
+
+        // Rewrite storage without base64 payloads
+        sessionStorage.setItem('fileData', JSON.stringify(sanitized))
       } catch (error) {
         console.error('Error parsing stored file data:', error)
         window.location.href = '/public/upload'
@@ -163,23 +261,10 @@ export default function PromptsPage() {
     setProcessingMessage('Initializing generation process...')
 
     try {
-      let userImageUrl = fileData.url
+      let userImageUrl = fileData.url as string | null
       
-      // 0) Upload file to Supabase if not already uploaded (after execution is created)
-      if (!fileData.uploaded || !fileData.url) {
-        console.log('File not uploaded yet, will upload to Supabase after execution creation')
-        
-        if (!fileData.base64Data) {
-          alert('File data is missing. Please go back to upload page and try again.')
-          setSubmitting(false)
-          return
-        }
-        
-        // We'll upload the file after execution is created
-        userImageUrl = null // Will be set after upload
-      } else {
-        console.log('File already uploaded to Supabase:', fileData.url)
-        userImageUrl = fileData.url
+      if (userImageUrl) {
+        console.log('File already uploaded to Supabase:', userImageUrl)
       }
 
       // 1) Create an execution
@@ -198,17 +283,23 @@ export default function PromptsPage() {
       }
       const executionId: string = execJson.execution_id
 
-      // Upload file to Supabase if not already uploaded (now that we have execution_id)
-      if (!fileData.uploaded || !fileData.url) {
+      // Upload file to Supabase if we only have legacy base64 data
+      if (!userImageUrl) {
         setProcessingMessage('Uploading product image to Supabase...')
-        console.log('Uploading file to Supabase with execution ID:', executionId)
+        console.log('Uploading legacy file payload to Supabase with execution ID:', executionId)
         
         try {
+          if (!legacyBase64Data) {
+            throw new Error('No image data available to upload')
+          }
+
           // Convert base64 back to file
-          const base64Response = await fetch(fileData.base64Data)
+          const base64Response = await fetch(legacyBase64Data)
           const blob = await base64Response.blob()
-          const file = new File([blob], fileData.name, { type: fileData.type })
-          console.log('Recreated file from base64:', file.name, file.size, file.type)
+          const fallbackName = fileData?.name || `product-${Date.now()}.png`
+          const fallbackType = fileData?.type || blob.type || 'image/png'
+          const file = new File([blob], fallbackName, { type: fallbackType })
+          console.log('Recreated file from legacy base64:', file.name, file.size, file.type)
           
           // Generate a session ID for this upload
           const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
@@ -234,7 +325,7 @@ export default function PromptsPage() {
           
           // Update fileData with the uploaded URL
           userImageUrl = uploadJson.url
-          const updatedFileData = {
+          const updatedFileData = sanitizeFilePayload({
             ...fileData,
             url: uploadJson.url,
             fileName: uploadJson.fileName,
@@ -242,8 +333,15 @@ export default function PromptsPage() {
             sessionId: sessionId,
             uploaded: true,
             uploadId: uploadJson.uploadId
+          })
+
+          if (!updatedFileData) {
+            throw new Error('Failed to sanitize uploaded file data')
           }
-          
+
+          setFileData(updatedFileData)
+          setLegacyBase64Data(null)
+
           // Update sessionStorage with the uploaded file data
           sessionStorage.setItem('fileData', JSON.stringify(updatedFileData))
           sessionStorage.setItem('previewUrl', uploadJson.url)
@@ -255,6 +353,12 @@ export default function PromptsPage() {
           setSubmitting(false)
           return
         }
+      }
+
+      if (!userImageUrl) {
+        alert('Product image is missing. Please upload again.')
+        setSubmitting(false)
+        return
       }
 
       // 2) Process templates with AI
@@ -270,6 +374,7 @@ export default function PromptsPage() {
           userImageUrl,
           webhookUrl: webhookUrl,
           execution_id: executionId,
+          src: selectedSource,
         }),
       })
       const triggerJson = await triggerRes.json()
@@ -298,19 +403,20 @@ export default function PromptsPage() {
             const uploadData = await resultsUploadRes.json()
             console.log(`Uploaded ${uploadData.count} results to Supabase`)
             
-            // Replace base64 images with Supabase URLs in the response
-            if (uploadData.uploaded && uploadData.uploaded.length > 0) {
-              processedResponse = replaceBase64WithUrls(triggerJson, uploadData.uploaded)
-              console.log(`Replaced ${uploadData.uploaded.length} base64 images with Supabase URLs`)
-              console.log('Processed response size:', JSON.stringify(processedResponse).length, 'bytes')
+            const uploadedList = Array.isArray(uploadData.uploaded) ? uploadData.uploaded : []
+            processedResponse = replaceBase64WithUrls(triggerJson, uploadedList)
+
+            if (uploadedList.length > 0) {
+              console.log(`Replaced ${uploadedList.length} base64 images with Supabase URLs`)
             } else {
-              console.warn('No images were uploaded to Supabase, keeping original response')
+              console.warn('No images were uploaded to Supabase; stripped base64 payloads from response instead')
             }
+
+            console.log('Processed response size:', JSON.stringify(processedResponse).length, 'bytes')
           }
         } catch (uploadErr) {
           console.error("Failed to upload results to Supabase:", uploadErr)
-          // Continue with original response if upload fails
-          processedResponse = triggerJson
+          processedResponse = replaceBase64WithUrls(triggerJson, [])
         }
       }
 

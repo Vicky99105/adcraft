@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { UploadImage } from "@/components/upload-image"
@@ -11,6 +11,8 @@ export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null)
   const [selectedTemplates, setSelectedTemplates] = useState<Template[]>([])
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [fileData, setFileData] = useState<any>(null)
+  const [isUploading, setIsUploading] = useState(false)
 
   useEffect(() => {
     // Load templates from sessionStorage
@@ -31,14 +33,12 @@ export default function UploadPage() {
     const storedFileData = sessionStorage.getItem('fileData')
     if (storedFileData) {
       try {
-        const fileData = JSON.parse(storedFileData)
-        if (fileData.base64Data) {
-          // Recreate the file object from stored data
-          const mockFile = new File([''], fileData.name, { type: fileData.type })
-          Object.defineProperty(mockFile, 'size', { value: fileData.size })
-          
-          setFile(mockFile)
-          setPreviewUrl(fileData.base64Data)
+        const parsed = JSON.parse(storedFileData)
+        setFileData(parsed)
+
+        if (parsed?.url) {
+          setPreviewUrl(parsed.url)
+          setFile(null)
         }
       } catch (error) {
         console.error('Error parsing stored file data:', error)
@@ -46,41 +46,100 @@ export default function UploadPage() {
     }
   }, [])
 
+  const persistFileData = useCallback((data: any | null) => {
+    if (!data) {
+      sessionStorage.removeItem('fileData')
+      setFileData(null)
+      return
+    }
+
+    setFileData(data)
+    sessionStorage.setItem('fileData', JSON.stringify(data))
+  }, [])
+
   const handleFileChange = (newFile: File | null) => {
     setFile(newFile)
-    
-    // Immediately update sessionStorage with new file data
+    setPreviewUrl(null)
+
     if (newFile) {
-      const reader = new FileReader()
-      reader.onload = () => {
-        const base64DataUrl = reader.result as string
-        const fileData = {
-          name: newFile.name,
-          size: newFile.size,
-          type: newFile.type,
-          base64Data: base64DataUrl,
-          uploaded: false
-        }
-        sessionStorage.setItem('fileData', JSON.stringify(fileData))
-        setPreviewUrl(base64DataUrl)
+      const nextData = {
+        name: newFile.name,
+        size: newFile.size,
+        type: newFile.type,
+        uploaded: false,
+        url: null,
       }
-      reader.readAsDataURL(newFile)
+      persistFileData(nextData)
     } else {
-      // Clear file data
-      sessionStorage.removeItem('fileData')
-      setPreviewUrl(null)
+      persistFileData(null)
     }
   }
 
-  const handleNext = () => {
-    if (!file) {
+  const handleNext = async () => {
+    if (isUploading) return
+
+    const hasUploadedUrl = fileData?.uploaded && fileData?.url
+
+    if (!file && !hasUploadedUrl) {
       alert('Please upload a product image before proceeding.')
       return
     }
-    
-    // Set navigation flag and proceed
-    sessionStorage.setItem('navigating', 'true')
-    window.location.href = '/public/prompts'
+
+    // If we already have an uploaded URL, skip reuploading
+    if (hasUploadedUrl) {
+      sessionStorage.setItem('navigating', 'true')
+      window.location.href = '/public/prompts'
+      return
+    }
+
+    if (!file) {
+      alert('Something went wrong with the file upload. Please select the image again.')
+      return
+    }
+
+    try {
+      setIsUploading(true)
+
+      const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('sessionId', sessionId)
+
+      const uploadRes = await fetch('/api/file/upload', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const uploadJson = await uploadRes.json()
+
+      if (!uploadRes.ok || !uploadJson?.url) {
+        throw new Error(uploadJson?.error || 'Upload failed')
+      }
+
+      const uploadedData = {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        url: uploadJson.url,
+        fileName: uploadJson.fileName,
+        filePath: uploadJson.filePath,
+        sessionId: sessionId,
+        uploaded: true,
+        uploadId: uploadJson.uploadId || null,
+      }
+
+      persistFileData(uploadedData)
+      setPreviewUrl(uploadJson.url)
+      setFile(null)
+
+      sessionStorage.setItem('navigating', 'true')
+      window.location.href = '/public/prompts'
+    } catch (error) {
+      console.error('Failed to upload file before navigating:', error)
+      alert('Failed to upload your image. Please try again.')
+    } finally {
+      setIsUploading(false)
+    }
   }
 
   const handleBack = () => {
@@ -111,12 +170,13 @@ export default function UploadPage() {
                 <ChevronLeft className="w-4 h-4 mr-2" />
                 Back
               </Button>
-              {file && (
+              {(file || (fileData?.uploaded && fileData?.url)) && (
                 <Button 
-                  onClick={handleNext} 
-                  className="bg-blue-600 hover:bg-blue-700"
+                  onClick={handleNext}
+                  disabled={isUploading}
+                  className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60"
                 >
-                  Modify Prompts
+                  {isUploading ? 'Uploading...' : 'Modify Prompts'}
                   <ChevronRight className="w-4 h-4 ml-2" />
                 </Button>
               )}

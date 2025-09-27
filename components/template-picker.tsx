@@ -2,7 +2,7 @@ import Image from "next/image"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Plus, X, Globe, Target, TrendingUp } from "lucide-react"
+import { Plus, X, Globe, Target, TrendingUp, Eye } from "lucide-react"
 import { useState } from "react"
 import type { Template } from "@/types"
 
@@ -71,6 +71,14 @@ export function TemplatePicker({
         {/* Template Cards */}
         {templates.map((template, idx) => {
           const isChecked = selected.some(t => t.id === template.id)
+          const source = (template.src || template.source || "").toString().toLowerCase()
+          const isYoutube = source === "youtube"
+          const viewCount = typeof template.views === "number" ? template.views : null
+          const hasCountries = !isYoutube && template.n_countries !== undefined && template.n_countries !== null
+          const hasReach = !isYoutube && !!template.reach
+          const hasBrand = !!template.brand
+          const hasViews = isYoutube && viewCount !== null
+          const showNoStats = !hasCountries && !hasReach && !hasBrand && !hasViews
           return (
             <div
               key={template.id + idx}
@@ -114,26 +122,32 @@ export function TemplatePicker({
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 h-16">
                   <div className="absolute bottom-1 left-1 right-1 text-white">
                     <div className="flex flex-wrap items-center justify-start gap-2 text-xs">
-                      {(template.n_countries !== undefined && template.n_countries !== null) && (
+                      {hasCountries && (
                         <div className="flex items-center gap-1 bg-black/60 rounded px-2 py-1">
                           <Globe className="w-3 h-3" />
                           <span>{template.n_countries === 0 ? 1 : template.n_countries}</span>
                         </div>
                       )}
-                      {template.brand && (
+                      {hasBrand && (
                         <div className="flex items-center gap-1 bg-black/60 rounded px-2 py-1">
                           <Target className="w-3 h-3" />
                           <span className="truncate max-w-12">{template.brand}</span>
                         </div>
                       )}
-                      {template.reach && (
+                      {hasReach && (
                         <div className="flex items-center gap-1 bg-black/60 rounded px-2 py-1">
                           <TrendingUp className="w-3 h-3" />
                           <span>{template.reach.toLocaleString()}</span>
                         </div>
                       )}
+                      {hasViews && (
+                        <div className="flex items-center gap-1 bg-black/60 rounded px-2 py-1">
+                          <Eye className="w-3 h-3" />
+                          <span>{viewCount.toLocaleString()}</span>
+                        </div>
+                      )}
                     </div>
-                    {!template.n_countries && !template.brand && !template.reach && (
+                    {showNoStats && (
                       <div className="text-center text-xs text-gray-300 mt-1 bg-black/40 rounded px-2 py-1">
                         No stats
                       </div>
